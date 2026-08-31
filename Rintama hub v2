@@ -25,7 +25,14 @@ else
 	ScreenGui.Parent = game:GetService("CoreGui")
 end
 
--- Giữ nguyên nút HUB gốc như ban đầu
+local TextChatService = game:GetService("TextChatService")
+
+local chatWindow = TextChatService:FindFirstChildOfClass("ChatWindowConfiguration")
+
+if chatWindow then
+    chatWindow.Enabled = true
+end
+
 local OpenBtn = Instance.new("TextButton")
 OpenBtn.Parent = ScreenGui
 OpenBtn.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
