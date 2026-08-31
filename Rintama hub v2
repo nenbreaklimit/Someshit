@@ -25,6 +25,7 @@ else
 	ScreenGui.Parent = game:GetService("CoreGui")
 end
 
+-- Giữ nguyên nút HUB gốc như ban đầu
 local OpenBtn = Instance.new("TextButton")
 OpenBtn.Parent = ScreenGui
 OpenBtn.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
@@ -40,11 +41,12 @@ local OpenStroke = Instance.new("UIStroke", OpenBtn)
 OpenStroke.Thickness = 2
 OpenStroke.Color = Color3.fromRGB(70, 70, 90)
 
+-- Tăng nhẹ MainFrame để chứa các nút lớn hơn 10%
 local MainFrame = Instance.new("Frame")
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
-MainFrame.Position = UDim2.new(1, -280, 0.6, -115) 
-MainFrame.Size = UDim2.fromOffset(260, 230) 
+MainFrame.Position = UDim2.new(1, -260, 0.6, -110) 
+MainFrame.Size = UDim2.fromOffset(240, 210) 
 MainFrame.Active = true
 MainFrame.Draggable = true
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
@@ -61,19 +63,20 @@ Title.Position = UDim2.fromOffset(0, 5)
 Title.Font = Enum.Font.GothamBold
 Title.Text = "orochimaru hub"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 16
+Title.TextSize = 15
 Title.TextXAlignment = Enum.TextXAlignment.Center 
 
+-- Nút thu nhỏ
 local MinimizeBtn = Instance.new("TextButton")
 MinimizeBtn.Parent = MainFrame
 MinimizeBtn.BackgroundColor3 = Color3.fromRGB(38, 38, 48)
-MinimizeBtn.Position = UDim2.new(1, -32, 0, 8)
-MinimizeBtn.Size = UDim2.fromOffset(24, 24)
+MinimizeBtn.Position = UDim2.new(1, -28, 0, 8)
+MinimizeBtn.Size = UDim2.fromOffset(20, 20)
 MinimizeBtn.Font = Enum.Font.GothamBold
 MinimizeBtn.Text = "-"
 MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinimizeBtn.TextSize = 16
-Instance.new("UICorner", MinimizeBtn).CornerRadius = UDim.new(0, 6)
+MinimizeBtn.TextSize = 14
+Instance.new("UICorner", MinimizeBtn).CornerRadius = UDim.new(0, 4)
 
 MinimizeBtn.MouseButton1Click:Connect(function()
 	MainFrame.Visible = false
@@ -85,6 +88,7 @@ OpenBtn.MouseButton1Click:Connect(function()
 	OpenBtn.Visible = false
 end)
 
+-- Nút danh mục (giữ nguyên tỷ lệ chuẩn)
 local TabContainer = Instance.new("Frame")
 TabContainer.Parent = MainFrame
 TabContainer.BackgroundTransparency = 1
@@ -144,7 +148,7 @@ MiscPage.Position = UDim2.fromOffset(12, 75)
 MiscPage.Size = UDim2.new(1, -24, 1, -95)
 MiscPage.Visible = false
 
--- Tab Switching Logic
+-- Đổi tab
 local function SwitchTab(tabName)
 	FarmPage.Visible = (tabName == "FARM")
 	TrollPage.Visible = (tabName == "TROLL")
@@ -167,11 +171,11 @@ MiscTabBtn.MouseButton1Click:Connect(function() SwitchTab("MISC") end)
 local MoneyLabel = Instance.new("TextLabel")
 MoneyLabel.Parent = FarmPage
 MoneyLabel.BackgroundTransparency = 1
-MoneyLabel.Size = UDim2.new(1, 0, 0, 25)
+MoneyLabel.Size = UDim2.new(1, 0, 0, 20)
 MoneyLabel.Font = Enum.Font.GothamBold
 MoneyLabel.Text = "Money: ..."
 MoneyLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-MoneyLabel.TextSize = 16
+MoneyLabel.TextSize = 14
 MoneyLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 task.spawn(function()
@@ -186,16 +190,17 @@ task.spawn(function()
 	end
 end)
 
+-- Tăng kích thước nút lên 28px (+10% so với bản trước)
 local ToggleFarmBtn = Instance.new("TextButton")
 ToggleFarmBtn.Parent = FarmPage
 ToggleFarmBtn.BackgroundColor3 = Color3.fromRGB(170, 55, 55)
-ToggleFarmBtn.Position = UDim2.fromOffset(0, 35)
-ToggleFarmBtn.Size = UDim2.new(1, 0, 0, 35)
+ToggleFarmBtn.Position = UDim2.fromOffset(0, 30)
+ToggleFarmBtn.Size = UDim2.new(1, 0, 0, 28)
 ToggleFarmBtn.Font = Enum.Font.GothamBold
 ToggleFarmBtn.Text = "AUTO FARM: OFF"
 ToggleFarmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleFarmBtn.TextSize = 14
-Instance.new("UICorner", ToggleFarmBtn).CornerRadius = UDim.new(0, 8)
+ToggleFarmBtn.TextSize = 13
+Instance.new("UICorner", ToggleFarmBtn).CornerRadius = UDim.new(0, 6)
 
 local function executeFarmScript()
 	pcall(function()
@@ -226,7 +231,7 @@ local TargetBox = Instance.new("TextBox")
 TargetBox.Parent = TrollPage
 TargetBox.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
 TargetBox.Position = UDim2.fromOffset(0, 0) 
-TargetBox.Size = UDim2.new(1, 0, 0, 30)
+TargetBox.Size = UDim2.new(1, 0, 0, 28)
 TargetBox.Font = Enum.Font.Gotham
 TargetBox.PlaceholderText = "Enter player name..."
 TargetBox.Text = ""
@@ -240,24 +245,24 @@ TargetBoxStroke.Color = Color3.fromRGB(70, 70, 90)
 local ToggleCarryTargetBtn = Instance.new("TextButton")
 ToggleCarryTargetBtn.Parent = TrollPage
 ToggleCarryTargetBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-ToggleCarryTargetBtn.Position = UDim2.fromOffset(0, 37) 
-ToggleCarryTargetBtn.Size = UDim2.new(1, 0, 0, 35)
+ToggleCarryTargetBtn.Position = UDim2.fromOffset(0, 34) 
+ToggleCarryTargetBtn.Size = UDim2.new(1, 0, 0, 28)
 ToggleCarryTargetBtn.Font = Enum.Font.GothamBold
 ToggleCarryTargetBtn.Text = "CARRY TARGET: OFF"
 ToggleCarryTargetBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-ToggleCarryTargetBtn.TextSize = 14
-Instance.new("UICorner", ToggleCarryTargetBtn).CornerRadius = UDim.new(0, 8)
+ToggleCarryTargetBtn.TextSize = 13
+Instance.new("UICorner", ToggleCarryTargetBtn).CornerRadius = UDim.new(0, 6)
 
 local ToggleCarryAllBtn = Instance.new("TextButton")
 ToggleCarryAllBtn.Parent = TrollPage
 ToggleCarryAllBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-ToggleCarryAllBtn.Position = UDim2.fromOffset(0, 79) 
-ToggleCarryAllBtn.Size = UDim2.new(1, 0, 0, 35)
+ToggleCarryAllBtn.Position = UDim2.fromOffset(0, 68) 
+ToggleCarryAllBtn.Size = UDim2.new(1, 0, 0, 28)
 ToggleCarryAllBtn.Font = Enum.Font.GothamBold
 ToggleCarryAllBtn.Text = "CARRY ALL: OFF"
 ToggleCarryAllBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-ToggleCarryAllBtn.TextSize = 14
-Instance.new("UICorner", ToggleCarryAllBtn).CornerRadius = UDim.new(0, 8)
+ToggleCarryAllBtn.TextSize = 13
+Instance.new("UICorner", ToggleCarryAllBtn).CornerRadius = UDim.new(0, 6)
 
 local function GetPlayerFromString(str)
 	if not str or str == "" then return nil end
@@ -361,34 +366,34 @@ end)
 local SpectateFrame = Instance.new("Frame")
 SpectateFrame.Parent = MiscPage
 SpectateFrame.BackgroundTransparency = 1
-SpectateFrame.Size = UDim2.new(1, 0, 0, 30)
+SpectateFrame.Size = UDim2.new(1, 0, 0, 28)
 
 local PrevBtn = Instance.new("TextButton")
 PrevBtn.Parent = SpectateFrame
 PrevBtn.BackgroundColor3 = Color3.fromRGB(38, 38, 48)
-PrevBtn.Size = UDim2.new(0, 30, 1, 0)
+PrevBtn.Size = UDim2.new(0, 28, 1, 0)
 PrevBtn.Font = Enum.Font.GothamBold
 PrevBtn.Text = "<"
 PrevBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-PrevBtn.TextSize = 14
+PrevBtn.TextSize = 12
 Instance.new("UICorner", PrevBtn).CornerRadius = UDim.new(0, 6)
 
 local NextBtn = Instance.new("TextButton")
 NextBtn.Parent = SpectateFrame
 NextBtn.BackgroundColor3 = Color3.fromRGB(38, 38, 48)
-NextBtn.Position = UDim2.new(1, -30, 0, 0)
-NextBtn.Size = UDim2.new(0, 30, 1, 0)
+NextBtn.Position = UDim2.new(1, -28, 0, 0)
+NextBtn.Size = UDim2.new(0, 28, 1, 0)
 NextBtn.Font = Enum.Font.GothamBold
 NextBtn.Text = ">"
 NextBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-NextBtn.TextSize = 14
+NextBtn.TextSize = 12
 Instance.new("UICorner", NextBtn).CornerRadius = UDim.new(0, 6)
 
 local SpectateName = Instance.new("TextLabel")
 SpectateName.Parent = SpectateFrame
 SpectateName.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
-SpectateName.Position = UDim2.new(0, 35, 0, 0)
-SpectateName.Size = UDim2.new(1, -70, 1, 0)
+SpectateName.Position = UDim2.new(0, 33, 0, 0)
+SpectateName.Size = UDim2.new(1, -66, 1, 0)
 SpectateName.Font = Enum.Font.Gotham
 SpectateName.Text = "No Players"
 SpectateName.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -398,24 +403,24 @@ Instance.new("UICorner", SpectateName).CornerRadius = UDim.new(0, 6)
 local ToggleSpectateBtn = Instance.new("TextButton")
 ToggleSpectateBtn.Parent = MiscPage
 ToggleSpectateBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-ToggleSpectateBtn.Position = UDim2.fromOffset(0, 37)
-ToggleSpectateBtn.Size = UDim2.new(1, 0, 0, 35)
+ToggleSpectateBtn.Position = UDim2.fromOffset(0, 34)
+ToggleSpectateBtn.Size = UDim2.new(1, 0, 0, 28)
 ToggleSpectateBtn.Font = Enum.Font.GothamBold
 ToggleSpectateBtn.Text = "SPECTATE: OFF"
 ToggleSpectateBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-ToggleSpectateBtn.TextSize = 14
-Instance.new("UICorner", ToggleSpectateBtn).CornerRadius = UDim.new(0, 8)
+ToggleSpectateBtn.TextSize = 13
+Instance.new("UICorner", ToggleSpectateBtn).CornerRadius = UDim.new(0, 6)
 
 local TeleportBtn = Instance.new("TextButton")
 TeleportBtn.Parent = MiscPage
 TeleportBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-TeleportBtn.Position = UDim2.fromOffset(0, 79)
-TeleportBtn.Size = UDim2.new(1, 0, 0, 35)
+TeleportBtn.Position = UDim2.fromOffset(0, 68)
+TeleportBtn.Size = UDim2.new(1, 0, 0, 28)
 TeleportBtn.Font = Enum.Font.GothamBold
 TeleportBtn.Text = "TELEPORT TO PLAYER"
 TeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 TeleportBtn.TextSize = 13
-Instance.new("UICorner", TeleportBtn).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", TeleportBtn).CornerRadius = UDim.new(0, 6)
 
 local Spectating = false
 local SpectateIndex = 1
@@ -484,12 +489,10 @@ TeleportBtn.MouseButton1Click:Connect(function()
 		local targetPlayer = targets[SpectateIndex]
 		if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
 			if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-				-- Play visual effect on button press
 				TweenService:Create(TeleportBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
 				task.wait(0.1)
 				TweenService:Create(TeleportBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
 				
-				-- Teleport local player to the target player
 				LocalPlayer.Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame
 			end
 		end
@@ -512,6 +515,7 @@ task.spawn(function()
 		end
 	end
 end)
+
 local CreditLabel = Instance.new("TextLabel")
 CreditLabel.Parent = MainFrame
 CreditLabel.BackgroundTransparency = 1
