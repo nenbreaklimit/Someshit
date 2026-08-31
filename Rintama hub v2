@@ -26,7 +26,6 @@ else
 end
 
 local TextChatService = game:GetService("TextChatService")
-
 local chatWindow = TextChatService:FindFirstChildOfClass("ChatWindowConfiguration")
 
 if chatWindow then
@@ -48,7 +47,6 @@ local OpenStroke = Instance.new("UIStroke", OpenBtn)
 OpenStroke.Thickness = 2
 OpenStroke.Color = Color3.fromRGB(70, 70, 90)
 
--- Tăng nhẹ MainFrame để chứa các nút lớn hơn 10%
 local MainFrame = Instance.new("Frame")
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
@@ -73,7 +71,6 @@ Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 15
 Title.TextXAlignment = Enum.TextXAlignment.Center 
 
--- Nút thu nhỏ
 local MinimizeBtn = Instance.new("TextButton")
 MinimizeBtn.Parent = MainFrame
 MinimizeBtn.BackgroundColor3 = Color3.fromRGB(38, 38, 48)
@@ -95,7 +92,6 @@ OpenBtn.MouseButton1Click:Connect(function()
 	OpenBtn.Visible = false
 end)
 
--- Nút danh mục (giữ nguyên tỷ lệ chuẩn)
 local TabContainer = Instance.new("Frame")
 TabContainer.Parent = MainFrame
 TabContainer.BackgroundTransparency = 1
@@ -155,7 +151,6 @@ MiscPage.Position = UDim2.fromOffset(12, 75)
 MiscPage.Size = UDim2.new(1, -24, 1, -95)
 MiscPage.Visible = false
 
--- Đổi tab
 local function SwitchTab(tabName)
 	FarmPage.Visible = (tabName == "FARM")
 	TrollPage.Visible = (tabName == "TROLL")
@@ -197,7 +192,6 @@ task.spawn(function()
 	end
 end)
 
--- Tăng kích thước nút lên 28px (+10% so với bản trước)
 local ToggleFarmBtn = Instance.new("TextButton")
 ToggleFarmBtn.Parent = FarmPage
 ToggleFarmBtn.BackgroundColor3 = Color3.fromRGB(170, 55, 55)
@@ -322,7 +316,7 @@ ToggleCarryTargetBtn.MouseButton1Click:Connect(function()
 		if CurrentTarget and CurrentTarget.Character then
 			pcall(function()
 				local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
-				local args = { { ["\194\162"] = { CurrentTarget.Character, false }, ["\194\145"] = { soundAsset, { ParentFolder = soundAsset.Parent, RollOffMode = Enum.RollOffMode.Inverse, Looped = false, MinDistance = 5000, MaxDistance = 5000, Name = "", Volume = 0.5, RandomizePlaybackSpeed = true, PlayOnRemove = true } } }, {} }
+				local args = { { ["\194\162"] = { CurrentTarget.Character, false }, ["\194\145"] = { soundAsset, { ParentFolder = soundAsset.Parent, RollOffMode = Enum.RollOffMode.Inverse, Looped = false, MinDistance = 5, MaxDistance = 50, Name = "", Volume = 0.5, RandomizePlaybackSpeed = true, PlayOnRemove = true } } }, {} }
 				ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
 			end)
 		end
@@ -344,10 +338,28 @@ ToggleCarryAllBtn.MouseButton1Click:Connect(function()
 					if player ~= LocalPlayer and player.Character then
 						pcall(function()
 							local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
-							local args = { { ["\194\162"] = { player.Character, true }, ["\194\145"] = { soundAsset, { ParentFolder = soundAsset.Parent, RollOffMode = Enum.RollOffMode.Inverse, Looped = false, MinDistance = 5000, MaxDistance = 5000, Name = "", Volume = 0.5, RandomizePlaybackSpeed = true, PlayOnRemove = true } } }, {} }
+							local args = {
+								{
+									["\194\162"] = { player.Character, true },
+									["\194\145"] = {
+										soundAsset,
+										{
+											ParentFolder = soundAsset.Parent,
+											RollOffMode = Enum.RollOffMode.Inverse,
+											Looped = false,
+											MinDistance = 5000,
+											MaxDistance = 5000,
+											Name = "",
+											Volume = 0.5,
+											RandomizePlaybackSpeed = true,
+											PlayOnRemove = true
+										}
+									}
+								},
+								{}
+							}
 							ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
 						end)
-						task.wait(0.05)
 					end
 				end
 				task.wait(0.1)
@@ -359,10 +371,29 @@ ToggleCarryAllBtn.MouseButton1Click:Connect(function()
 		TweenService:Create(ToggleCarryAllBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
 		
 		for _, player in ipairs(Players:GetPlayers()) do
-			if player ~= LocalPlayer and player.Character then
+			if player.Character then
 				pcall(function()
 					local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
-					local args = { { ["\194\162"] = { player.Character, false }, ["\194\145"] = { soundAsset, { ParentFolder = soundAsset.Parent, RollOffMode = Enum.RollOffMode.Inverse, Looped = false, MinDistance = 5000, MaxDistance = 5000, Name = "", Volume = 0.5, RandomizePlaybackSpeed = true, PlayOnRemove = true } } }, {} }
+					local args = {
+						{
+							["\194\162"] = { player.Character, false },
+							["\194\145"] = {
+								soundAsset,
+								{
+									ParentFolder = soundAsset.Parent,
+									RollOffMode = Enum.RollOffMode.Inverse,
+									Looped = false,
+									MinDistance = 5000,
+									MaxDistance = 5000,
+									Name = "",
+									Volume = 0.5,
+									RandomizePlaybackSpeed = true,
+									PlayOnRemove = true
+								}
+							}
+						},
+						{}
+					}
 					ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
 				end)
 			end
@@ -431,6 +462,7 @@ Instance.new("UICorner", TeleportBtn).CornerRadius = UDim.new(0, 6)
 
 local Spectating = false
 local SpectateIndex = 1
+local TargetSpectatePlayer = nil
 
 local function GetSpectateTargets()
 	local targets = {}
@@ -446,8 +478,9 @@ local function UpdateSpectate()
 	local targets = GetSpectateTargets()
 	if #targets == 0 then
 		SpectateName.Text = "No Players"
-		if Spectating then
-			workspace.CurrentCamera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+		TargetSpectatePlayer = nil
+		if Spectating and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+			workspace.CurrentCamera.CameraSubject = LocalPlayer.Character.Humanoid
 		end
 		return
 	end
@@ -455,11 +488,11 @@ local function UpdateSpectate()
 	if SpectateIndex > #targets then SpectateIndex = 1 end
 	if SpectateIndex < 1 then SpectateIndex = #targets end
 
-	local targetPlayer = targets[SpectateIndex]
-	SpectateName.Text = targetPlayer.Name
+	TargetSpectatePlayer = targets[SpectateIndex]
+	SpectateName.Text = TargetSpectatePlayer.Name
 
-	if Spectating and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") then
-		workspace.CurrentCamera.CameraSubject = targetPlayer.Character.Humanoid
+	if Spectating and TargetSpectatePlayer.Character and TargetSpectatePlayer.Character:FindFirstChild("Humanoid") then
+		workspace.CurrentCamera.CameraSubject = TargetSpectatePlayer.Character.Humanoid
 	end
 end
 
@@ -484,6 +517,7 @@ ToggleSpectateBtn.MouseButton1Click:Connect(function()
 		ToggleSpectateBtn.Text = "SPECTATE: OFF"
 		ToggleSpectateBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
 		TweenService:Create(ToggleSpectateBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
+		TargetSpectatePlayer = nil
 		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
 			workspace.CurrentCamera.CameraSubject = LocalPlayer.Character.Humanoid
 		end
@@ -491,33 +525,29 @@ ToggleSpectateBtn.MouseButton1Click:Connect(function()
 end)
 
 TeleportBtn.MouseButton1Click:Connect(function()
-	local targets = GetSpectateTargets()
-	if #targets > 0 then
-		local targetPlayer = targets[SpectateIndex]
-		if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-			if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-				TweenService:Create(TeleportBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
-				task.wait(0.1)
-				TweenService:Create(TeleportBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
-				
-				LocalPlayer.Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame
-			end
+	if TargetSpectatePlayer and TargetSpectatePlayer.Character and TargetSpectatePlayer.Character:FindFirstChild("HumanoidRootPart") then
+		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+			TweenService:Create(TeleportBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
+			task.wait(0.1)
+			TweenService:Create(TeleportBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
+			
+			LocalPlayer.Character.HumanoidRootPart.CFrame = TargetSpectatePlayer.Character.HumanoidRootPart.CFrame
 		end
 	end
 end)
 
 task.spawn(function()
 	while true do
-		task.wait(0.5)
+		task.wait(0.2)
 		if Spectating then
-			local targets = GetSpectateTargets()
-			if #targets > 0 then
-				local targetPlayer = targets[SpectateIndex]
-				if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") then
-					if workspace.CurrentCamera.CameraSubject ~= targetPlayer.Character.Humanoid then
-						workspace.CurrentCamera.CameraSubject = targetPlayer.Character.Humanoid
+			if TargetSpectatePlayer and TargetSpectatePlayer.Parent == Players then
+				if TargetSpectatePlayer.Character and TargetSpectatePlayer.Character:FindFirstChild("Humanoid") then
+					if workspace.CurrentCamera.CameraSubject ~= TargetSpectatePlayer.Character.Humanoid then
+						workspace.CurrentCamera.CameraSubject = TargetSpectatePlayer.Character.Humanoid
 					end
 				end
+			else
+				UpdateSpectate()
 			end
 		end
 	end
