@@ -316,7 +316,7 @@ ToggleCarryTargetBtn.MouseButton1Click:Connect(function()
 		if CurrentTarget and CurrentTarget.Character then
 			pcall(function()
 				local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
-				local args = { { ["\194\162"] = { CurrentTarget.Character, false }, ["\194\145"] = { soundAsset, { ParentFolder = soundAsset.Parent, RollOffMode = Enum.RollOffMode.Inverse, Looped = false, MinDistance = 5, MaxDistance = 50, Name = "", Volume = 0.5, RandomizePlaybackSpeed = true, PlayOnRemove = true } } }, {} }
+				local args = { { ["\194\162"] = { CurrentTarget.Character, false }, ["\194\145"] = { soundAsset, { ParentFolder = soundAsset.Parent, RollOffMode = Enum.RollOffMode.Inverse, Looped = false, MinDistance = 5000, MaxDistance = 5000, Name = "", Volume = 0.5, RandomizePlaybackSpeed = true, PlayOnRemove = true } } }, {} }
 				ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
 			end)
 		end
