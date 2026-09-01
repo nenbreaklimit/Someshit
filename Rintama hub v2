@@ -326,25 +326,25 @@ end)
 
 ToggleCarryAllBtn.MouseButton1Click:Connect(function()
 	getgenv().GrabAllToggled = not getgenv().GrabAllToggled
+	
 	if getgenv().GrabAllToggled then
 		ToggleCarryAllBtn.Text = "CARRY ALL: ON"
 		ToggleCarryAllBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
 		TweenService:Create(ToggleCarryAllBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(50, 70, 50)}):Play()
 		
+		-- Sửa lỗi: Thêm task.spawn và vòng lặp while để liên tục carry tất cả người chơi
 		task.spawn(function()
 			while getgenv().GrabAllToggled do
 				for _, player in ipairs(Players:GetPlayers()) do
-					if not getgenv().GrabAllToggled then break end
 					if player ~= LocalPlayer and player.Character then
 						pcall(function()
-							local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
 							local args = {
 								{
 									["\194\162"] = { player.Character, true },
 									["\194\145"] = {
-										soundAsset,
+										ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013"),
 										{
-											ParentFolder = soundAsset.Parent,
+											ParentFolder = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"),
 											RollOffMode = Enum.RollOffMode.Inverse,
 											Looped = false,
 											MinDistance = 5000,
@@ -362,25 +362,25 @@ ToggleCarryAllBtn.MouseButton1Click:Connect(function()
 						end)
 					end
 				end
-				task.wait(0.1)
+				task.wait(0.05)
 			end
 		end)
+		
 	else
 		ToggleCarryAllBtn.Text = "CARRY ALL: OFF"
 		ToggleCarryAllBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
 		TweenService:Create(ToggleCarryAllBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
 		
 		for _, player in ipairs(Players:GetPlayers()) do
-			if player.Character then
+			if player ~= LocalPlayer and player.Character then
 				pcall(function()
-					local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
 					local args = {
 						{
 							["\194\162"] = { player.Character, false },
 							["\194\145"] = {
-								soundAsset,
+								ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013"),
 								{
-									ParentFolder = soundAsset.Parent,
+									ParentFolder = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"),
 									RollOffMode = Enum.RollOffMode.Inverse,
 									Looped = false,
 									MinDistance = 5000,
