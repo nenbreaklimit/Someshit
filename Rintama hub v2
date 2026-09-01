@@ -332,70 +332,80 @@ ToggleCarryAllBtn.MouseButton1Click:Connect(function()
 		ToggleCarryAllBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
 		TweenService:Create(ToggleCarryAllBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(50, 70, 50)}):Play()
 		
-		-- Sửa lỗi: Thêm task.spawn và vòng lặp while để liên tục carry tất cả người chơi
-		task.spawn(function()
-			while getgenv().GrabAllToggled do
-				for _, player in ipairs(Players:GetPlayers()) do
-					if player ~= LocalPlayer and player.Character then
-						pcall(function()
-							local args = {
-								{
-									["\194\162"] = { player.Character, true },
-									["\194\145"] = {
-										ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013"),
-										{
-											ParentFolder = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"),
-											RollOffMode = Enum.RollOffMode.Inverse,
-											Looped = false,
-											MinDistance = 5000,
-											MaxDistance = 5000,
-											Name = "",
-											Volume = 0.5,
-											RandomizePlaybackSpeed = true,
-											PlayOnRemove = true
-										}
-									}
-								},
-								{}
+		for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+			if player ~= game:GetService("Players").LocalPlayer and player.Character then
+				local args = {
+					{
+						["\194\162"] = {
+							player.Character,
+							true
+						},
+						["\194\145"] = {
+							game:GetService("ReplicatedStorage")
+								:WaitForChild("Assets")
+								:WaitForChild("Sounds")
+								:WaitForChild("Combat")
+								:WaitForChild("Swing")
+								:WaitForChild("Light")
+								:WaitForChild("0013"),
+							{
+								ParentFolder = game:GetService("ReplicatedStorage")
+									:WaitForChild("Assets")
+									:WaitForChild("Sounds")
+									:WaitForChild("Combat")
+									:WaitForChild("Swing")
+									:WaitForChild("Light"),
+								RollOffMode = Enum.RollOffMode.Inverse,
+								Looped = false,
+								MinDistance = 5,
+								MaxDistance = 50,
+								Name = "",
+								Volume = 0.5,
+								RandomizePlaybackSpeed = true,
+								PlayOnRemove = true
 							}
-							ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
-						end)
-					end
-				end
-				task.wait(0.05)
+						}
+					},
+					{}
+				}
+
+				game:GetService("ReplicatedStorage")
+					:WaitForChild("RedEvent")
+					:FireServer(unpack(args))
 			end
-		end)
-		
+		end
 	else
 		ToggleCarryAllBtn.Text = "CARRY ALL: OFF"
 		ToggleCarryAllBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
 		TweenService:Create(ToggleCarryAllBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
 		
-		for _, player in ipairs(Players:GetPlayers()) do
-			if player ~= LocalPlayer and player.Character then
-				pcall(function()
-					local args = {
-						{
-							["\194\162"] = { player.Character, false },
-							["\194\145"] = {
-								ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013"),
-								{
-									ParentFolder = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"),
-									RollOffMode = Enum.RollOffMode.Inverse,
-									Looped = false,
-									MinDistance = 5000,
-									MaxDistance = 5000,
-									Name = "",
-									Volume = 0.5,
-									RandomizePlaybackSpeed = true,
-									PlayOnRemove = true
-								}
-							}
+		for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+			if player.Character then
+				local args = {
+					{
+						["\194\162"] = {
+							player.Character,
+							false
 						},
-						{}
-					}
-					ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
-				end)
+						["\194\145"] = {
+							game:GetService("ReplicatedStorage"):WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013"),
+							{
+								ParentFolder = game:GetService("ReplicatedStorage"):WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"),
+								RollOffMode = Enum.RollOffMode.Inverse,
+								Looped = false,
+								MinDistance = 5,
+								MaxDistance = 50,
+								Name = "",
+								Volume = 0.5,
+								RandomizePlaybackSpeed = true,
+								PlayOnRemove = true
+							}
+						}
+					},
+					{}
+				}
+				
+				game:GetService("ReplicatedStorage"):WaitForChild("RedEvent"):FireServer(unpack(args))
 			end
 		end
 	end
