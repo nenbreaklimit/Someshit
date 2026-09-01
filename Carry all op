@@ -6,6 +6,22 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
+-- Xác định Parent GUI
+local targetParent
+if gethui then
+	targetParent = gethui()
+elseif syn and syn.protect_gui then
+	targetParent = game:GetService("CoreGui")
+else
+	targetParent = game:GetService("CoreGui")
+end
+
+-- 1. TỰ ĐỘNG XÓA GUI CŨ NẾU ĐÃ TỒN TẠI
+if targetParent:FindFirstChild("OrochimaruHub") then
+	targetParent:FindFirstChild("OrochimaruHub"):Destroy()
+end
+
+-- Đặt lại trạng thái biến toàn cục
 getgenv().AutoFarmDelivery = false
 getgenv().GrabAllToggled = false
 getgenv().CarryTargetToggled = false
@@ -24,6 +40,13 @@ elseif syn and syn.protect_gui then
 else
 	ScreenGui.Parent = game:GetService("CoreGui")
 end
+
+-- 2. DỌN DẸP VÒNG LẶP / CHỐNG LEAK MEMORY KHI GUI BỊ XÓA
+ScreenGui.Destroying:Connect(function()
+	getgenv().AutoFarmDelivery = false
+	getgenv().GrabAllToggled = false
+	getgenv().CarryTargetToggled = false
+end)
 
 local TextChatService = game:GetService("TextChatService")
 local chatWindow = TextChatService:FindFirstChildOfClass("ChatWindowConfiguration")
@@ -547,7 +570,7 @@ TeleportBtn.MouseButton1Click:Connect(function()
 end)
 
 task.spawn(function()
-	while true do
+	while ScreenGui.Parent do
 		task.wait(0.2)
 		if Spectating then
 			if TargetSpectatePlayer and TargetSpectatePlayer.Parent == Players then
