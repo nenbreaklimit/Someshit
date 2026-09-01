@@ -1,12 +1,210 @@
+--// =====================================================
+--// ULTIMATE COMBINED SCRIPT: DETECTOR + OROCHIMARU HUB
+--// =====================================================
+
 local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+local SoundService = game:GetService("SoundService")
+local TextChatService = game:GetService("TextChatService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Xác định Parent GUI
+--------------------------------------------------
+--// 1. CC / MOD DETECTOR & STEALTH ESP
+--------------------------------------------------
+local CONFIG = {
+    SoundId = "rbxassetid://9068077052",
+    SoundVolume = 2,
+    NotificationDuration = 10,
+    TargetColor = Color3.fromRGB(255, 50, 50),
+    FillTransparency = 1,
+    OutlineTransparency = 0,
+}
+
+local ActiveTrackers = {} 
+local CoreContainer = nil
+
+if gethui then
+    CoreContainer = gethui()
+elseif syn and syn.protect_gui then
+    CoreContainer = Instance.new("Folder")
+    syn.protect_gui(CoreContainer)
+    CoreContainer.Parent = game:GetService("CoreGui")
+else
+    local success, core = pcall(function() return game:GetService("CoreGui") end)
+    CoreContainer = success and core or LocalPlayer:WaitForChild("PlayerGui")
+end
+
+local function PlayAlertSound()
+    task.spawn(function()
+        local sound = Instance.new("Sound")
+        sound.SoundId = CONFIG.SoundId
+        sound.Volume = CONFIG.SoundVolume
+        sound.Parent = SoundService
+        sound:Play()
+        sound.Ended:Wait()
+        sound:Destroy()
+    end)
+end
+
+local function SendSystemNotice(title, text)
+    pcall(function()
+        StarterGui:SetCore("SendNotification", {
+            Title = title,
+            Text = text,
+            Duration = CONFIG.NotificationDuration
+        })
+    end)
+    
+    if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+        local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+        if channel then
+            channel:DisplaySystemMessage("<font color='#FF3232'><b>[" .. title .. "]: </b>" .. text .. "</font>")
+        end
+    end
+end
+
+local function EvaluatePlayer(player)
+    if player == LocalPlayer then return false, nil end
+
+    local cmdVal = player:FindFirstChild("CommandLevel")
+    if cmdVal and cmdVal:IsA("ValueBase") and (tonumber(cmdVal.Value) or 0) > 0 then
+        return true, "CommandLevel " .. tostring(cmdVal.Value)
+    end
+    
+    local attrLevel = tonumber(player:GetAttribute("CommandLevel")) or 0
+    if attrLevel > 0 then
+        return true, "CommandLevel " .. tostring(attrLevel)
+    end
+
+    return false, nil
+end
+
+local function DestroyESP(player)
+    if ActiveTrackers[player] then
+        for _, item in ipairs(ActiveTrackers[player].Instances or {}) do
+            if item then item:Destroy() end
+        end
+        for _, conn in ipairs(ActiveTrackers[player].Connections or {}) do
+            if conn.Connected then conn:Disconnect() end
+        end
+        ActiveTrackers[player] = nil
+    end
+end
+
+local function ApplyStealthESP(player, reason)
+    DestroyESP(player)
+
+    local tracker = { Instances = {}, Connections = {} }
+    ActiveTrackers[player] = tracker
+
+    local function RenderForCharacter(character)
+        if not character then return end
+        local hrp = character:WaitForChild("HumanoidRootPart", 5)
+        if not hrp then return end
+
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "TargetESP_" .. player.Name
+        highlight.Adornee = character
+        highlight.FillColor = CONFIG.TargetColor
+        highlight.OutlineColor = CONFIG.TargetColor
+        highlight.FillTransparency = CONFIG.FillTransparency
+        highlight.OutlineTransparency = CONFIG.OutlineTransparency
+        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        highlight.Parent = CoreContainer
+        table.insert(tracker.Instances, highlight)
+
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "TargetTag_" .. player.Name
+        billboard.Adornee = hrp
+        billboard.Size = UDim2.new(0, 130, 0, 28)
+        billboard.StudsOffset = Vector3.new(0, 3.8, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = CoreContainer
+        table.insert(tracker.Instances, billboard)
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.TextColor3 = CONFIG.TargetColor
+        label.TextStrokeTransparency = 0
+        label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        label.Font = Enum.Font.SourceSansBold
+        label.TextSize = 12
+        label.Text = string.format("⚠️ CC / MOD ⚠️\n%s", player.Name)
+        label.Parent = billboard
+    end
+
+    if player.Character then
+        task.spawn(RenderForCharacter, player.Character)
+    end
+
+    local charConn = player.CharacterAdded:Connect(function(newChar)
+        task.wait(0.5)
+        RenderForCharacter(newChar)
+    end)
+    table.insert(tracker.Connections, charConn)
+end
+
+local function ProcessPlayer(player)
+    if player == LocalPlayer then return end
+
+    local function Check()
+        local isTarget, reason = EvaluatePlayer(player)
+        if isTarget and not ActiveTrackers[player] then
+            SendSystemNotice("⚠️ CC/MOD DETECTED", player.Name .. " | " .. reason)
+            PlayAlertSound()
+            ApplyStealthESP(player, reason)
+        end
+    end
+
+    Check()
+
+    local childConn = player.ChildAdded:Connect(function(child)
+        if child.Name == "CommandLevel" then
+            task.wait(0.1)
+            Check()
+            local valConn = child:GetPropertyChangedSignal("Value"):Connect(Check)
+            if ActiveTrackers[player] then table.insert(ActiveTrackers[player].Connections, valConn) end
+        end
+    end)
+
+    local attrConn = player.AttributeChanged:Connect(function(attrName)
+        if attrName == "CommandLevel" then
+            Check()
+        end
+    end)
+    
+    local cleanupConn
+    cleanupConn = Players.PlayerRemoving:Connect(function(leavingPlayer)
+        if leavingPlayer == player then
+            DestroyESP(player)
+            if childConn.Connected then childConn:Disconnect() end
+            if attrConn.Connected then attrConn:Disconnect() end
+            if cleanupConn.Connected then cleanupConn:Disconnect() end
+        end
+    end)
+end
+
+-- Kích hoạt Detector Engine
+task.spawn(function()
+    for _, p in ipairs(Players:GetPlayers()) do
+        task.spawn(ProcessPlayer, p)
+    end
+
+    Players.PlayerAdded:Connect(function(p)
+        task.spawn(ProcessPlayer, p)
+    end)
+
+    print("⚡ [CC / MOD DETECTOR]: HỆ THỐNG ĐÃ KÍCH HOẠT (PURE COMMAND LEVEL)!")
+end)
+
+--------------------------------------------------
+--// 2. OROCHIMARU HUB GUI SYSTEM
+--------------------------------------------------
 local targetParent
 if gethui then
 	targetParent = gethui()
@@ -16,12 +214,10 @@ else
 	targetParent = game:GetService("CoreGui")
 end
 
--- 1. TỰ ĐỘNG XÓA GUI CŨ NẾU ĐÃ TỒN TẠI
 if targetParent:FindFirstChild("OrochimaruHub") then
 	targetParent:FindFirstChild("OrochimaruHub"):Destroy()
 end
 
--- Đặt lại trạng thái biến toàn cục
 getgenv().AutoFarmDelivery = false
 getgenv().GrabAllToggled = false
 getgenv().CarryTargetToggled = false
@@ -41,16 +237,13 @@ else
 	ScreenGui.Parent = game:GetService("CoreGui")
 end
 
--- 2. DỌN DẸP VÒNG LẶP / CHỐNG LEAK MEMORY KHI GUI BỊ XÓA
 ScreenGui.Destroying:Connect(function()
 	getgenv().AutoFarmDelivery = false
 	getgenv().GrabAllToggled = false
 	getgenv().CarryTargetToggled = false
 end)
 
-local TextChatService = game:GetService("TextChatService")
 local chatWindow = TextChatService:FindFirstChildOfClass("ChatWindowConfiguration")
-
 if chatWindow then
     chatWindow.Enabled = true
 end
@@ -66,6 +259,7 @@ OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 OpenBtn.TextSize = 12
 OpenBtn.Visible = false
 Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(0, 10)
+
 local OpenStroke = Instance.new("UIStroke", OpenBtn)
 OpenStroke.Thickness = 2
 OpenStroke.Color = Color3.fromRGB(70, 70, 90)
@@ -262,6 +456,7 @@ TargetBox.Text = ""
 TargetBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 TargetBox.TextSize = 12
 Instance.new("UICorner", TargetBox).CornerRadius = UDim.new(0, 6)
+
 local TargetBoxStroke = Instance.new("UIStroke", TargetBox)
 TargetBoxStroke.Thickness = 1
 TargetBoxStroke.Color = Color3.fromRGB(70, 70, 90)
@@ -355,29 +550,15 @@ ToggleCarryAllBtn.MouseButton1Click:Connect(function()
 		ToggleCarryAllBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
 		TweenService:Create(ToggleCarryAllBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(50, 70, 50)}):Play()
 		
-		for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
-			if player ~= game:GetService("Players").LocalPlayer and player.Character then
+		for _, player in ipairs(Players:GetPlayers()) do
+			if player ~= LocalPlayer and player.Character then
 				local args = {
 					{
-						["\194\162"] = {
-							player.Character,
-							true
-						},
+						["\194\162"] = { player.Character, true },
 						["\194\145"] = {
-							game:GetService("ReplicatedStorage")
-								:WaitForChild("Assets")
-								:WaitForChild("Sounds")
-								:WaitForChild("Combat")
-								:WaitForChild("Swing")
-								:WaitForChild("Light")
-								:WaitForChild("0013"),
+							ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013"),
 							{
-								ParentFolder = game:GetService("ReplicatedStorage")
-									:WaitForChild("Assets")
-									:WaitForChild("Sounds")
-									:WaitForChild("Combat")
-									:WaitForChild("Swing")
-									:WaitForChild("Light"),
+								ParentFolder = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"),
 								RollOffMode = Enum.RollOffMode.Inverse,
 								Looped = false,
 								MinDistance = 5,
@@ -391,10 +572,7 @@ ToggleCarryAllBtn.MouseButton1Click:Connect(function()
 					},
 					{}
 				}
-
-				game:GetService("ReplicatedStorage")
-					:WaitForChild("RedEvent")
-					:FireServer(unpack(args))
+				ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
 			end
 		end
 	else
@@ -402,18 +580,15 @@ ToggleCarryAllBtn.MouseButton1Click:Connect(function()
 		ToggleCarryAllBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
 		TweenService:Create(ToggleCarryAllBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
 		
-		for _, player in pairs(game:GetService("Players"):GetPlayers()) do
+		for _, player in pairs(Players:GetPlayers()) do
 			if player.Character then
 				local args = {
 					{
-						["\194\162"] = {
-							player.Character,
-							false
-						},
+						["\194\162"] = { player.Character, false },
 						["\194\145"] = {
-							game:GetService("ReplicatedStorage"):WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013"),
+							ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013"),
 							{
-								ParentFolder = game:GetService("ReplicatedStorage"):WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"),
+								ParentFolder = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"),
 								RollOffMode = Enum.RollOffMode.Inverse,
 								Looped = false,
 								MinDistance = 5,
@@ -427,8 +602,7 @@ ToggleCarryAllBtn.MouseButton1Click:Connect(function()
 					},
 					{}
 				}
-				
-				game:GetService("ReplicatedStorage"):WaitForChild("RedEvent"):FireServer(unpack(args))
+				ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
 			end
 		end
 	end
