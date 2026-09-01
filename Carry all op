@@ -1,65 +1,58 @@
---// TARGET DETECTOR + STEALTH ESP + BILLBOARD (TEST VERSION)
---// Purely Focused on: Player Name "FaultBee"
+Help --// =====================================================
+\--// ULTIMATE COMBINED SCRIPT: DETECTOR + OROCHIMARU HUB (UI REMASTERED)
+\--// =====================================================
 
-local Players = game:GetService("Players")
-local StarterGui = game:GetService("StarterGui")
-local SoundService = game:GetService("SoundService")
-local TextChatService = game:GetService("TextChatService")
+local Players = game\:GetService("Players")
+local StarterGui = game\:GetService("StarterGui")
+local SoundService = game\:GetService("SoundService")
+local TextChatService = game\:GetService("TextChatService")
+local ReplicatedStorage = game\:GetService("ReplicatedStorage")
+local UserInputService = game\:GetService("UserInputService")
+local TweenService = game\:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
-local TARGET_NAME = "FaultBee" -- Tên người chơi bạn muốn test
 
---------------------------------------------------
---// CẤU HÌNH HỆ THỐNG (CONFIG)
---------------------------------------------------
+\--------------------------------------------------
+\--// 1. CC / MOD DETECTOR & STEALTH ESP
+\--------------------------------------------------
 local CONFIG = {
-    -- Âm thanh & Thông báo
     SoundId = "rbxassetid://9068077052",
     SoundVolume = 2,
     NotificationDuration = 10,
-    
-    -- Màu sắc ESP & UI
-    TargetColor = Color3.fromRGB(255, 50, 50), -- Màu đỏ cảnh báo
-    FillTransparency = 1,                       -- 1 = Ẩn hoàn toàn màu thân (chỉ giữ lại viền)
-    OutlineTransparency = 0,                    -- 0 = Hiển thị rõ viền ngoài
+    TargetColor = Color3.fromRGB(255, 65, 65), -- Đỏ sáng hơn
+    FillTransparency = 0.8, -- Nhìn xuyên thấu mượt hơn
+    OutlineTransparency = 0,
 }
 
---------------------------------------------------
---// HEURISTICS & CONTAINERS
---------------------------------------------------
 local ActiveTrackers = {} 
 local CoreContainer = nil
 
--- Xác định container an toàn nhất cho ESP (Stealth Mode)
 if gethui then
     CoreContainer = gethui()
-elseif syn and syn.protect_gui then
+elseif syn and syn.protect\_gui then
     CoreContainer = Instance.new("Folder")
-    syn.protect_gui(CoreContainer)
-    CoreContainer.Parent = game:GetService("CoreGui")
+    syn.protect\_gui(CoreContainer)
+    CoreContainer.Parent = game\:GetService("CoreGui")
 else
-    local success, core = pcall(function() return game:GetService("CoreGui") end)
-    CoreContainer = success and core or LocalPlayer:WaitForChild("PlayerGui")
+    local success, core = pcall(function() return game\:GetService("CoreGui") end)
+    CoreContainer = success and core or LocalPlayer\:WaitForChild("PlayerGui")
 end
 
---------------------------------------------------
---// HELPER FUNCTIONS
---------------------------------------------------
 local function PlayAlertSound()
     task.spawn(function()
         local sound = Instance.new("Sound")
         sound.SoundId = CONFIG.SoundId
         sound.Volume = CONFIG.SoundVolume
         sound.Parent = SoundService
-        sound:Play()
-        sound.Ended:Wait()
-        sound:Destroy()
+        sound\:Play()
+        sound.Ended\:Wait()
+        sound\:Destroy()
     end)
 end
 
 local function SendSystemNotice(title, text)
     pcall(function()
-        StarterGui:SetCore("SendNotification", {
+        StarterGui\:SetCore("SendNotification", {
             Title = title,
             Text = text,
             Duration = CONFIG.NotificationDuration
@@ -67,38 +60,36 @@ local function SendSystemNotice(title, text)
     end)
     
     if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-        local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+        local channel = TextChatService.TextChannels\:FindFirstChild("RBXGeneral")
         if channel then
-            channel:DisplaySystemMessage("<font color='#FF3232'><b>[" .. title .. "]: </b>" .. text .. "</font>")
+            channel\:DisplaySystemMessage("\<font color='#FF4141'>\<b>[" .. title .. "]: \</b>" .. text .. "\</font>")
         end
     end
 end
 
---------------------------------------------------
---// DETECTOR LOGIC (ONLY TARGET NAME)
---------------------------------------------------
 local function EvaluatePlayer(player)
-    -- Nếu bạn muốn tự test lên chính mình, hãy đổi dòng dưới thành: 
-    -- if player.Name == TARGET_NAME then return true, "Test Target" end
-    if player == LocalPlayer and player.Name ~= TARGET_NAME then return false, nil end
+    if player == LocalPlayer then return false, nil end
 
-    if player.Name == TARGET_NAME then
-        return true, "Target Found"
+    local cmdVal = player\:FindFirstChild("CommandLevel")
+    if cmdVal and cmdVal\:IsA("ValueBase") and (tonumber(cmdVal.Value) or 0) > 0 then
+        return true, "CommandLevel " .. tostring(cmdVal.Value)
+    end
+    
+    local attrLevel = tonumber(player\:GetAttribute("CommandLevel")) or 0
+    if attrLevel > 0 then
+        return true, "CommandLevel " .. tostring(attrLevel)
     end
 
     return false, nil
 end
 
---------------------------------------------------
---// STEALTH ESP & BILLBOARD ENGINE
---------------------------------------------------
 local function DestroyESP(player)
     if ActiveTrackers[player] then
-        for _, item in ipairs(ActiveTrackers[player].Instances or {}) do
-            if item then item:Destroy() end
+        for \_, item in ipairs(ActiveTrackers[player].Instances or {}) do
+            if item then item\:Destroy() end
         end
-        for _, conn in ipairs(ActiveTrackers[player].Connections or {}) do
-            if conn.Connected then conn:Disconnect() end
+        for \_, conn in ipairs(ActiveTrackers[player].Connections or {}) do
+            if conn.Connected then conn\:Disconnect() end
         end
         ActiveTrackers[player] = nil
     end
@@ -112,27 +103,25 @@ local function ApplyStealthESP(player, reason)
 
     local function RenderForCharacter(character)
         if not character then return end
-        local hrp = character:WaitForChild("HumanoidRootPart", 5)
+        local hrp = character\:WaitForChild("HumanoidRootPart", 5)
         if not hrp then return end
 
-        -- Highlight ESP (Chỉ hiện viền nhân vật)
         local highlight = Instance.new("Highlight")
-        highlight.Name = "TargetESP_" .. player.Name
+        highlight.Name = "TargetESP\_" .. player.Name
         highlight.Adornee = character
         highlight.FillColor = CONFIG.TargetColor
-        highlight.OutlineColor = CONFIG.TargetColor
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
         highlight.FillTransparency = CONFIG.FillTransparency
         highlight.OutlineTransparency = CONFIG.OutlineTransparency
         highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
         highlight.Parent = CoreContainer
         table.insert(tracker.Instances, highlight)
 
-        -- Billboard Tag (Chữ nhỏ gọn trên đầu)
         local billboard = Instance.new("BillboardGui")
-        billboard.Name = "TargetTag_" .. player.Name
+        billboard.Name = "TargetTag\_" .. player.Name
         billboard.Adornee = hrp
         billboard.Size = UDim2.new(0, 130, 0, 28)
-        billboard.StudsOffset = Vector3.new(0, 2.8, 0)
+        billboard.StudsOffset = Vector3.new(0, 3.8, 0)
         billboard.AlwaysOnTop = true
         billboard.Parent = CoreContainer
         table.insert(tracker.Instances, billboard)
@@ -143,9 +132,9 @@ local function ApplyStealthESP(player, reason)
         label.TextColor3 = CONFIG.TargetColor
         label.TextStrokeTransparency = 0
         label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-        label.Font = Enum.Font.SourceSansBold
-        label.TextSize = 12
-        label.Text = string.format("⚠️ TARGET TEST ⚠️\n%s", player.Name)
+        label.Font = Enum.Font.GothamBold
+        label.TextSize = 13
+        label.Text = string.format("⚠️ CC / MOD ⚠️\n%s", player.Name)
         label.Parent = billboard
     end
 
@@ -153,48 +142,605 @@ local function ApplyStealthESP(player, reason)
         task.spawn(RenderForCharacter, player.Character)
     end
 
-    local charConn = player.CharacterAdded:Connect(function(newChar)
+    local charConn = player.CharacterAdded\:Connect(function(newChar)
         task.wait(0.5)
         RenderForCharacter(newChar)
     end)
     table.insert(tracker.Connections, charConn)
 end
 
---------------------------------------------------
---// MONITOR ENGINE
---------------------------------------------------
 local function ProcessPlayer(player)
+    if player == LocalPlayer then return end
+
     local function Check()
         local isTarget, reason = EvaluatePlayer(player)
         if isTarget and not ActiveTrackers[player] then
-            SendSystemNotice("🎯 TARGET DETECTED", player.Name .. " đã xuất hiện!")
+            SendSystemNotice("⚠️ CC/MOD DETECTED", player.Name .. " | " .. reason)
             PlayAlertSound()
             ApplyStealthESP(player, reason)
         end
     end
 
-    -- Quét khi người chơi vừa load
     Check()
+
+    local childConn = player.ChildAdded\:Connect(function(child)
+        if child.Name == "CommandLevel" then
+            task.wait(0.1)
+            Check()
+            local valConn = child\:GetPropertyChangedSignal("Value")\:Connect(Check)
+            if ActiveTrackers[player] then table.insert(ActiveTrackers[player].Connections, valConn) end
+        end
+    end)
+
+    local attrConn = player.AttributeChanged\:Connect(function(attrName)
+        if attrName == "CommandLevel" then
+            Check()
+        end
+    end)
     
-    -- Dọn dẹp sạch sẽ khi người chơi thoát
     local cleanupConn
-    cleanupConn = Players.PlayerRemoving:Connect(function(leavingPlayer)
+    cleanupConn = Players.PlayerRemoving\:Connect(function(leavingPlayer)
         if leavingPlayer == player then
             DestroyESP(player)
-            if cleanupConn.Connected then cleanupConn:Disconnect() end
+            if childConn.Connected then childConn\:Disconnect() end
+            if attrConn.Connected then attrConn\:Disconnect() end
+            if cleanupConn.Connected then cleanupConn\:Disconnect() end
         end
     end)
 end
 
---------------------------------------------------
---// MAIN INITIALIZATION
---------------------------------------------------
-for _, p in ipairs(Players:GetPlayers()) do
-    task.spawn(ProcessPlayer, p)
-end
-
-Players.PlayerAdded:Connect(function(p)
-    task.spawn(ProcessPlayer, p)
+task.spawn(function()
+    for \_, p in ipairs(Players\:GetPlayers()) do
+        task.spawn(ProcessPlayer, p)
+    end
+    Players.PlayerAdded\:Connect(function(p)
+        task.spawn(ProcessPlayer, p)
+    end)
+    print("⚡ [CC / MOD DETECTOR]: HỆ THỐNG ĐÃ KÍCH HOẠT!")
 end)
 
-print("⚡ [TEST DETECTOR]: ĐÃ KÍCH HOẠT (ĐANG TÌM: " .. TARGET_NAME .. ")!")
+\--------------------------------------------------
+\--// 2. OROCHIMARU HUB GUI SYSTEM (UI REMASTERED)
+\--------------------------------------------------
+local targetParent = gethui and gethui() or (syn and syn.protect\_gui and game\:GetService("CoreGui") or game\:GetService("CoreGui"))
+
+if targetParent\:FindFirstChild("OrochimaruHub") then
+&#x9;targetParent\:FindFirstChild("OrochimaruHub")\:Destroy()
+end
+
+getgenv().AutoFarmDelivery = false
+getgenv().GrabAllToggled = false
+getgenv().CarryTargetToggled = false
+
+\--// THEME COLORS
+local Theme = {
+    Background = Color3.fromRGB(15, 15, 20),
+    Container = Color3.fromRGB(22, 22, 28),
+    Accent = Color3.fromRGB(110, 80, 255), -- Orochimaru Purple
+    AccentHover = Color3.fromRGB(130, 100, 255),
+    TextWhite = Color3.fromRGB(245, 245, 245),
+    TextDim = Color3.fromRGB(160, 160, 175),
+    Stroke = Color3.fromRGB(45, 45, 55),
+    Green = Color3.fromRGB(45, 180, 85),
+    Red = Color3.fromRGB(220, 60, 60),
+    DarkElement = Color3.fromRGB(28, 28, 36)
+}
+
+\--// TWEEN UTILITY
+local function Tween(instance, properties, duration)
+    TweenService\:Create(instance, TweenInfo.new(duration or 0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), properties)\:Play()
+end
+
+local function AddButtonEffects(btn, defaultColor, hoverColor)
+    btn.MouseEnter\:Connect(function()
+        Tween(btn, {BackgroundColor3 = hoverColor})
+    end)
+    btn.MouseLeave\:Connect(function()
+        Tween(btn, {BackgroundColor3 = defaultColor})
+    end)
+    btn.MouseButton1Down\:Connect(function()
+        Tween(btn, {Size = UDim2.new(btn.Size.X.Scale, btn.Size.X.Offset - 4, btn.Size.Y.Scale, btn.Size.Y.Offset - 2)})
+    end)
+    btn.MouseButton1Up\:Connect(function()
+        Tween(btn, {Size = UDim2.new(btn.Size.X.Scale, btn.Size.X.Offset + 4, btn.Size.Y.Scale, btn.Size.Y.Offset + 2)})
+    end)
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "OrochimaruHub"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.Parent = targetParent
+
+local OpenBtn = Instance.new("TextButton")
+OpenBtn.Parent = ScreenGui
+OpenBtn.BackgroundColor3 = Theme.Container
+OpenBtn.Position = UDim2.new(0.02, 0, 0.5, -20)
+OpenBtn.Size = UDim2.fromOffset(45, 45)
+OpenBtn.Font = Enum.Font.GothamBold
+OpenBtn.Text = "HUB"
+OpenBtn.TextColor3 = Theme.Accent
+OpenBtn.TextSize = 13
+OpenBtn.Visible = false
+OpenBtn.AutoButtonColor = false
+Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(0, 12)
+Instance.new("UIStroke", OpenBtn).Color = Theme.Stroke
+AddButtonEffects(OpenBtn, Theme.Container, Theme.DarkElement)
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Theme.Background
+MainFrame.Position = UDim2.new(1, -290, 0.5, -135) 
+MainFrame.Size = UDim2.fromOffset(270, 270) 
+MainFrame.Active = true
+MainFrame.Draggable = true
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+Instance.new("UIStroke", MainFrame).Color = Theme.Stroke
+
+\-- Cầu vồng/Gradient line trên cùng
+local TopLine = Instance.new("Frame")
+TopLine.Parent = MainFrame
+TopLine.Size = UDim2.new(1, 0, 0, 2)
+TopLine.BackgroundColor3 = Color3.new(1, 1, 1)
+TopLine.BorderSizePixel = 0
+Instance.new("UICorner", TopLine).CornerRadius = UDim.new(0, 12)
+local Gradient = Instance.new("UIGradient", TopLine)
+Gradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Theme.Accent),
+    ColorSequenceKeypoint.new(1, Theme.Background)
+})
+
+local Title = Instance.new("TextLabel")
+Title.Parent = MainFrame
+Title.BackgroundTransparency = 1
+Title.Size = UDim2.new(1, -20, 0, 35) 
+Title.Position = UDim2.fromOffset(15, 5)
+Title.Font = Enum.Font.GothamBold
+Title.Text = "OROCHIMARU HUB"
+Title.TextColor3 = Theme.TextWhite
+Title.TextSize = 14
+Title.TextXAlignment = Enum.TextXAlignment.Left 
+
+local MinimizeBtn = Instance.new("TextButton")
+MinimizeBtn.Parent = MainFrame
+MinimizeBtn.BackgroundColor3 = Theme.Background
+MinimizeBtn.Position = UDim2.new(1, -35, 0, 10)
+MinimizeBtn.Size = UDim2.fromOffset(25, 25)
+MinimizeBtn.Font = Enum.Font.GothamBold
+MinimizeBtn.Text = "-"
+MinimizeBtn.TextColor3 = Theme.TextDim
+MinimizeBtn.TextSize = 18
+MinimizeBtn.AutoButtonColor = false
+Instance.new("UICorner", MinimizeBtn).CornerRadius = UDim.new(0, 6)
+AddButtonEffects(MinimizeBtn, Theme.Background, Theme.DarkElement)
+
+MinimizeBtn.MouseButton1Click\:Connect(function()
+    Tween(MainFrame, {Size = UDim2.fromOffset(270, 0), BackgroundTransparency = 1}, 0.2)
+    task.wait(0.2)
+&#x9;MainFrame.Visible = false
+&#x9;OpenBtn.Visible = true
+    Tween(OpenBtn, {BackgroundTransparency = 0}, 0.2)
+end)
+
+OpenBtn.MouseButton1Click\:Connect(function()
+    Tween(OpenBtn, {BackgroundTransparency = 1}, 0.2)
+    task.wait(0.2)
+&#x9;MainFrame.Visible = true
+&#x9;OpenBtn.Visible = false
+    MainFrame.Size = UDim2.fromOffset(270, 0)
+    MainFrame.BackgroundTransparency = 0
+    Tween(MainFrame, {Size = UDim2.fromOffset(270, 270)}, 0.3)
+end)
+
+local TabContainer = Instance.new("Frame")
+TabContainer.Parent = MainFrame
+TabContainer.BackgroundTransparency = 1
+TabContainer.Position = UDim2.fromOffset(15, 45)
+TabContainer.Size = UDim2.new(1, -30, 0, 30)
+
+local TabListLayout = Instance.new("UIListLayout", TabContainer)
+TabListLayout.FillDirection = Enum.FillDirection.Horizontal
+TabListLayout.HorizontalAlignment = Enum.HorizontalAlignment.SpaceBetween
+TabListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local function CreateTab(name, order)
+    local btn = Instance.new("TextButton")
+    btn.Parent = TabContainer
+    btn.BackgroundColor3 = Theme.DarkElement
+    btn.Size = UDim2.new(0.31, 0, 1, 0)
+    btn.Font = Enum.Font.GothamBold
+    btn.Text = name
+    btn.TextColor3 = Theme.TextDim
+    btn.TextSize = 11
+    btn.LayoutOrder = order
+    btn.AutoButtonColor = false
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    return btn
+end
+
+local FarmTabBtn = CreateTab("FARM", 1)
+local TrollTabBtn = CreateTab("TROLL", 2)
+local MiscTabBtn = CreateTab("MISC", 3)
+
+local PageContainer = Instance.new("Frame")
+PageContainer.Parent = MainFrame
+PageContainer.BackgroundTransparency = 1
+PageContainer.Position = UDim2.fromOffset(15, 85)
+PageContainer.Size = UDim2.new(1, -30, 1, -115)
+
+local function CreatePage(visible)
+    local page = Instance.new("Frame")
+    page.Parent = PageContainer
+    page.BackgroundTransparency = 1
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.Visible = visible
+    
+    local layout = Instance.new("UIListLayout", page)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 8)
+    
+    return page
+end
+
+local FarmPage = CreatePage(true)
+local TrollPage = CreatePage(false)
+local MiscPage = CreatePage(false)
+
+local function SwitchTab(tabName)
+&#x9;FarmPage.Visible = (tabName == "FARM")
+&#x9;TrollPage.Visible = (tabName == "TROLL")
+&#x9;MiscPage.Visible = (tabName == "MISC")
+&#x9;
+    Tween(FarmTabBtn, {BackgroundColor3 = (tabName == "FARM") and Theme.Accent or Theme.DarkElement, TextColor3 = (tabName == "FARM") and Theme.TextWhite or Theme.TextDim})
+    Tween(TrollTabBtn, {BackgroundColor3 = (tabName == "TROLL") and Theme.Accent or Theme.DarkElement, TextColor3 = (tabName == "TROLL") and Theme.TextWhite or Theme.TextDim})
+    Tween(MiscTabBtn, {BackgroundColor3 = (tabName == "MISC") and Theme.Accent or Theme.DarkElement, TextColor3 = (tabName == "MISC") and Theme.TextWhite or Theme.TextDim})
+end
+
+FarmTabBtn.MouseButton1Click\:Connect(function() SwitchTab("FARM") end)
+TrollTabBtn.MouseButton1Click\:Connect(function() SwitchTab("TROLL") end)
+MiscTabBtn.MouseButton1Click\:Connect(function() SwitchTab("MISC") end)
+
+SwitchTab("FARM") -- Khởi tạo tab mặc định
+
+\--// FARM TAB COMPONENTS
+local MoneyLabel = Instance.new("TextLabel")
+MoneyLabel.Parent = FarmPage
+MoneyLabel.BackgroundColor3 = Theme.Container
+MoneyLabel.Size = UDim2.new(1, 0, 0, 32)
+MoneyLabel.Font = Enum.Font.GothamBold
+MoneyLabel.Text = "  💵 Money: ..."
+MoneyLabel.TextColor3 = Theme.Green
+MoneyLabel.TextSize = 13
+MoneyLabel.TextXAlignment = Enum.TextXAlignment.Left
+Instance.new("UICorner", MoneyLabel).CornerRadius = UDim.new(0, 6)
+Instance.new("UIStroke", MoneyLabel).Color = Theme.Stroke
+
+task.spawn(function()
+&#x9;while ScreenGui.Parent do
+&#x9;	local money = LocalPlayer\:FindFirstChild("Money")
+&#x9;	if money then
+&#x9;		MoneyLabel.Text = "  💵 Money: " .. tostring(money.Value)
+&#x9;	else
+&#x9;		MoneyLabel.Text = "  💵 Money: ..."
+&#x9;	end
+&#x9;	task.wait(0.2)
+&#x9;end
+end)
+
+local ToggleFarmBtn = Instance.new("TextButton")
+ToggleFarmBtn.Parent = FarmPage
+ToggleFarmBtn.BackgroundColor3 = Theme.Red
+ToggleFarmBtn.Size = UDim2.new(1, 0, 0, 32)
+ToggleFarmBtn.Font = Enum.Font.GothamBold
+ToggleFarmBtn.Text = "AUTO FARM: OFF"
+ToggleFarmBtn.TextColor3 = Theme.TextWhite
+ToggleFarmBtn.TextSize = 12
+ToggleFarmBtn.AutoButtonColor = false
+Instance.new("UICorner", ToggleFarmBtn).CornerRadius = UDim.new(0, 6)
+AddButtonEffects(ToggleFarmBtn, Theme.Red, Color3.fromRGB(255, 80, 80))
+
+local function executeFarmScript()
+&#x9;pcall(function()
+&#x9;	loadstring(game\:HttpGet("[https://raw.githubusercontent.com/nenbreaklimit/Someshit/refs/heads/main/Rintamahigh](https://raw.githubusercontent.com/nenbreaklimit/Someshit/refs/heads/main/Rintamahigh)"))()
+&#x9;end)
+end
+
+ToggleFarmBtn.MouseButton1Click\:Connect(function()
+&#x9;getgenv().AutoFarmDelivery = not getgenv().AutoFarmDelivery
+&#x9;if getgenv().AutoFarmDelivery then
+&#x9;	ToggleFarmBtn.Text = "AUTO FARM: ON"
+        Tween(ToggleFarmBtn, {BackgroundColor3 = Theme.Green})
+        AddButtonEffects(ToggleFarmBtn, Theme.Green, Color3.fromRGB(60, 200, 100))
+&#x9;	task.spawn(executeFarmScript)
+&#x9;else
+&#x9;	ToggleFarmBtn.Text = "AUTO FARM: OFF"
+&#x9;	Tween(ToggleFarmBtn, {BackgroundColor3 = Theme.Red})
+        AddButtonEffects(ToggleFarmBtn, Theme.Red, Color3.fromRGB(255, 80, 80))
+&#x9;end
+end)
+
+LocalPlayer.CharacterAdded\:Connect(function()
+&#x9;task.wait(1.5)
+&#x9;if getgenv().AutoFarmDelivery then
+&#x9;	task.spawn(executeFarmScript)
+&#x9;end
+end)
+
+\--// TROLL TAB COMPONENTS
+local TargetBox = Instance.new("TextBox")
+TargetBox.Parent = TrollPage
+TargetBox.BackgroundColor3 = Theme.Container
+TargetBox.Size = UDim2.new(1, 0, 0, 32)
+TargetBox.Font = Enum.Font.Gotham
+TargetBox.PlaceholderText = "Enter player name..."
+TargetBox.Text = ""
+TargetBox.TextColor3 = Theme.TextWhite
+TargetBox.TextSize = 12
+Instance.new("UICorner", TargetBox).CornerRadius = UDim.new(0, 6)
+Instance.new("UIStroke", TargetBox).Color = Theme.Stroke
+
+local function CreateToggleButton(parent, text)
+    local btn = Instance.new("TextButton")
+    btn.Parent = parent
+    btn.BackgroundColor3 = Theme.DarkElement
+    btn.Size = UDim2.new(1, 0, 0, 32)
+    btn.Font = Enum.Font.GothamBold
+    btn.Text = text .. ": OFF"
+    btn.TextColor3 = Theme.Red
+    btn.TextSize = 12
+    btn.AutoButtonColor = false
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    AddButtonEffects(btn, Theme.DarkElement, Theme.Stroke)
+    return btn
+end
+
+local ToggleCarryTargetBtn = CreateToggleButton(TrollPage, "CARRY TARGET")
+local ToggleCarryAllBtn = CreateToggleButton(TrollPage, "CARRY ALL")
+
+local function GetPlayerFromString(str)
+&#x9;if not str or str == "" then return nil end
+&#x9;str = string.lower(str)
+&#x9;for \_, player in ipairs(Players\:GetPlayers()) do
+&#x9;	if string.find(string.lower(player.Name), str) or string.find(string.lower(player.DisplayName), str) then
+&#x9;		return player
+&#x9;	end
+&#x9;end
+&#x9;return nil
+end
+
+local CurrentTarget = nil
+
+local function ToggleLogic(btn, toggleVarName, baseText, startFunc, stopFunc)
+    btn.MouseButton1Click\:Connect(function()
+        getgenv()[toggleVarName] = not getgenv()[toggleVarName]
+        
+        if getgenv()[toggleVarName] then
+            if startFunc then 
+                local success = startFunc() 
+                if success == false then 
+                    getgenv()[toggleVarName] = false
+                    return 
+                end
+            end
+            btn.Text = baseText .. ": ON"
+            Tween(btn, {TextColor3 = Theme.Green})
+        else
+            if stopFunc then stopFunc() end
+            btn.Text = baseText .. ": OFF"
+            Tween(btn, {TextColor3 = Theme.Red})
+        end
+    end)
+end
+
+ToggleLogic(ToggleCarryTargetBtn, "CarryTargetToggled", "CARRY TARGET", 
+    function()
+        CurrentTarget = GetPlayerFromString(TargetBox.Text)
+&#x9;	if not CurrentTarget then
+&#x9;		TargetBox.Text = "Not found!"
+&#x9;		task.wait(1)
+&#x9;		TargetBox.Text = ""
+&#x9;		return false
+&#x9;	end
+&#x9;	TargetBox.Text = CurrentTarget.Name
+        
+        task.spawn(function()
+&#x9;		while getgenv().CarryTargetToggled and CurrentTarget do
+&#x9;			if CurrentTarget.Character and CurrentTarget \~= LocalPlayer then
+&#x9;				pcall(function()
+&#x9;					local soundAsset = ReplicatedStorage\:WaitForChild("Assets")\:WaitForChild("Sounds")\:WaitForChild("Combat")\:WaitForChild("Swing")\:WaitForChild("Light")\:WaitForChild("0013")
+&#x9;					local args = { { ["\194\162"] = { CurrentTarget.Character, true }, ["\194\145"] = { soundAsset, { ParentFolder = soundAsset.Parent, RollOffMode = Enum.RollOffMode.Inverse, Looped = false, MinDistance = 5000, MaxDistance = 5000, Name = "", Volume = 0.5, RandomizePlaybackSpeed = true, PlayOnRemove = true } } }, {} }
+&#x9;					ReplicatedStorage\:WaitForChild("RedEvent")\:FireServer(unpack(args))
+&#x9;				end)
+&#x9;			end
+&#x9;			task.wait(0.05)
+&#x9;		end
+&#x9;	end)
+        return true
+    end,
+    function()
+        if CurrentTarget and CurrentTarget.Character then
+&#x9;		pcall(function()
+&#x9;			local soundAsset = ReplicatedStorage\:WaitForChild("Assets")\:WaitForChild("Sounds")\:WaitForChild("Combat")\:WaitForChild("Swing")\:WaitForChild("Light")\:WaitForChild("0013")
+&#x9;			local args = { { ["\194\162"] = { CurrentTarget.Character, false }, ["\194\145"] = { soundAsset, { ParentFolder = soundAsset.Parent, RollOffMode = Enum.RollOffMode.Inverse, Looped = false, MinDistance = 5000, MaxDistance = 5000, Name = "", Volume = 0.5, RandomizePlaybackSpeed = true, PlayOnRemove = true } } }, {} }
+&#x9;			ReplicatedStorage\:WaitForChild("RedEvent")\:FireServer(unpack(args))
+&#x9;		end)
+&#x9;	end
+&#x9;	CurrentTarget = nil
+    end
+)
+
+ToggleLogic(ToggleCarryAllBtn, "GrabAllToggled", "CARRY ALL", 
+    function()
+        for \_, player in ipairs(Players\:GetPlayers()) do
+&#x9;		if player \~= LocalPlayer and player.Character then
+&#x9;			pcall(function()
+                    local args = { { ["\194\162"] = { player.Character, true }, ["\194\145"] = { ReplicatedStorage\:WaitForChild("Assets")\:WaitForChild("Sounds")\:WaitForChild("Combat")\:WaitForChild("Swing")\:WaitForChild("Light")\:WaitForChild("0013"), { ParentFolder = ReplicatedStorage\:WaitForChild("Assets")\:WaitForChild("Sounds")\:WaitForChild("Combat")\:WaitForChild("Swing")\:WaitForChild("Light"), RollOffMode = Enum.RollOffMode.Inverse, Looped = false, MinDistance = 5, MaxDistance = 50, Name = "", Volume = 0.5, RandomizePlaybackSpeed = true, PlayOnRemove = true } } }, {} }
+&#x9;			    ReplicatedStorage\:WaitForChild("RedEvent")\:FireServer(unpack(args))
+                end)
+&#x9;		end
+&#x9;	end
+        return true
+    end,
+    function()
+        for \_, player in pairs(Players\:GetPlayers()) do
+&#x9;		if player.Character then
+&#x9;			pcall(function()
+                    local args = { { ["\194\162"] = { player.Character, false }, ["\194\145"] = { ReplicatedStorage\:WaitForChild("Assets")\:WaitForChild("Sounds")\:WaitForChild("Combat")\:WaitForChild("Swing")\:WaitForChild("Light")\:WaitForChild("0013"), { ParentFolder = ReplicatedStorage\:WaitForChild("Assets")\:WaitForChild("Sounds")\:WaitForChild("Combat")\:WaitForChild("Swing")\:WaitForChild("Light"), RollOffMode = Enum.RollOffMode.Inverse, Looped = false, MinDistance = 5, MaxDistance = 50, Name = "", Volume = 0.5, RandomizePlaybackSpeed = true, PlayOnRemove = true } } }, {} }
+&#x9;			    ReplicatedStorage\:WaitForChild("RedEvent")\:FireServer(unpack(args))
+                end)
+&#x9;		end
+&#x9;	end
+    end
+)
+
+\--// MISC TAB COMPONENTS
+local SpectateFrame = Instance.new("Frame")
+SpectateFrame.Parent = MiscPage
+SpectateFrame.BackgroundTransparency = 1
+SpectateFrame.Size = UDim2.new(1, 0, 0, 32)
+
+local PrevBtn = Instance.new("TextButton")
+PrevBtn.Parent = SpectateFrame
+PrevBtn.BackgroundColor3 = Theme.Container
+PrevBtn.Size = UDim2.new(0, 32, 1, 0)
+PrevBtn.Font = Enum.Font.GothamBold
+PrevBtn.Text = "<"
+PrevBtn.TextColor3 = Theme.TextWhite
+PrevBtn.TextSize = 14
+Instance.new("UICorner", PrevBtn).CornerRadius = UDim.new(0, 6)
+Instance.new("UIStroke", PrevBtn).Color = Theme.Stroke
+AddButtonEffects(PrevBtn, Theme.Container, Theme.DarkElement)
+
+local NextBtn = Instance.new("TextButton")
+NextBtn.Parent = SpectateFrame
+NextBtn.BackgroundColor3 = Theme.Container
+NextBtn.Position = UDim2.new(1, -32, 0, 0)
+NextBtn.Size = UDim2.new(0, 32, 1, 0)
+NextBtn.Font = Enum.Font.GothamBold
+NextBtn.Text = ">"
+NextBtn.TextColor3 = Theme.TextWhite
+NextBtn.TextSize = 14
+Instance.new("UICorner", NextBtn).CornerRadius = UDim.new(0, 6)
+Instance.new("UIStroke", NextBtn).Color = Theme.Stroke
+AddButtonEffects(NextBtn, Theme.Container, Theme.DarkElement)
+
+local SpectateName = Instance.new("TextLabel")
+SpectateName.Parent = SpectateFrame
+SpectateName.BackgroundColor3 = Theme.Container
+SpectateName.Position = UDim2.new(0, 38, 0, 0)
+SpectateName.Size = UDim2.new(1, -76, 1, 0)
+SpectateName.Font = Enum.Font.GothamBold
+SpectateName.Text = "No Players"
+SpectateName.TextColor3 = Theme.TextWhite
+SpectateName.TextSize = 12
+Instance.new("UICorner", SpectateName).CornerRadius = UDim.new(0, 6)
+Instance.new("UIStroke", SpectateName).Color = Theme.Stroke
+
+local ToggleSpectateBtn = CreateToggleButton(MiscPage, "SPECTATE")
+
+local TeleportBtn = Instance.new("TextButton")
+TeleportBtn.Parent = MiscPage
+TeleportBtn.BackgroundColor3 = Theme.DarkElement
+TeleportBtn.Size = UDim2.new(1, 0, 0, 32)
+TeleportBtn.Font = Enum.Font.GothamBold
+TeleportBtn.Text = "TELEPORT TO PLAYER"
+TeleportBtn.TextColor3 = Theme.TextWhite
+TeleportBtn.TextSize = 12
+Instance.new("UICorner", TeleportBtn).CornerRadius = UDim.new(0, 6)
+AddButtonEffects(TeleportBtn, Theme.DarkElement, Theme.Stroke)
+
+local Spectating = false
+local SpectateIndex = 1
+local TargetSpectatePlayer = nil
+
+local function GetSpectateTargets()
+&#x9;local targets = {}
+&#x9;for \_, p in ipairs(Players\:GetPlayers()) do
+&#x9;	if p \~= LocalPlayer then
+&#x9;		table.insert(targets, p)
+&#x9;	end
+&#x9;end
+&#x9;return targets
+end
+
+local function UpdateSpectate()
+&#x9;local targets = GetSpectateTargets()
+&#x9;if #targets == 0 then
+&#x9;	SpectateName.Text = "No Players"
+&#x9;	TargetSpectatePlayer = nil
+&#x9;	if Spectating and LocalPlayer.Character and LocalPlayer.Character\:FindFirstChild("Humanoid") then
+&#x9;		workspace.CurrentCamera.CameraSubject = LocalPlayer.Character.Humanoid
+&#x9;	end
+&#x9;	return
+&#x9;end
+
+&#x9;if SpectateIndex > #targets then SpectateIndex = 1 end
+&#x9;if SpectateIndex < 1 then SpectateIndex = #targets end
+
+&#x9;TargetSpectatePlayer = targets[SpectateIndex]
+&#x9;SpectateName.Text = TargetSpectatePlayer.Name
+
+&#x9;if Spectating and TargetSpectatePlayer.Character and TargetSpectatePlayer.Character\:FindFirstChild("Humanoid") then
+&#x9;	workspace.CurrentCamera.CameraSubject = TargetSpectatePlayer.Character.Humanoid
+&#x9;end
+end
+
+PrevBtn.MouseButton1Click\:Connect(function()
+&#x9;SpectateIndex = SpectateIndex - 1
+&#x9;UpdateSpectate()
+end)
+
+NextBtn.MouseButton1Click\:Connect(function()
+&#x9;SpectateIndex = SpectateIndex + 1
+&#x9;UpdateSpectate()
+end)
+
+ToggleLogic(ToggleSpectateBtn, "SpectateToggleDummy", "SPECTATE", 
+    function()
+        Spectating = true
+        UpdateSpectate()
+        return true
+    end,
+    function()
+        Spectating = false
+        TargetSpectatePlayer = nil
+&#x9;	if LocalPlayer.Character and LocalPlayer.Character\:FindFirstChild("Humanoid") then
+&#x9;		workspace.CurrentCamera.CameraSubject = LocalPlayer.Character.Humanoid
+&#x9;	end
+    end
+)
+
+TeleportBtn.MouseButton1Click\:Connect(function()
+&#x9;if TargetSpectatePlayer and TargetSpectatePlayer.Character and TargetSpectatePlayer.Character\:FindFirstChild("HumanoidRootPart") then
+&#x9;	if LocalPlayer.Character and LocalPlayer.Character\:FindFirstChild("HumanoidRootPart") then
+&#x9;		LocalPlayer.Character.HumanoidRootPart.CFrame = TargetSpectatePlayer.Character.HumanoidRootPart.CFrame
+&#x9;	end
+&#x9;end
+end)
+
+task.spawn(function()
+&#x9;while ScreenGui.Parent do
+&#x9;	task.wait(0.2)
+&#x9;	if Spectating then
+&#x9;		if TargetSpectatePlayer and TargetSpectatePlayer.Parent == Players then
+&#x9;			if TargetSpectatePlayer.Character and TargetSpectatePlayer.Character\:FindFirstChild("Humanoid") then
+&#x9;				if workspace.CurrentCamera.CameraSubject \~= TargetSpectatePlayer.Character.Humanoid then
+&#x9;					workspace.CurrentCamera.CameraSubject = TargetSpectatePlayer.Character.Humanoid
+&#x9;				end
+&#x9;			end
+&#x9;		else
+&#x9;			UpdateSpectate()
+&#x9;		end
+&#x9;	end
+&#x9;end
+end)
+
+local CreditLabel = Instance.new("TextLabel")
+CreditLabel.Parent = MainFrame
+CreditLabel.BackgroundTransparency = 1
+CreditLabel.Position = UDim2.new(0, 0, 1, -25)
+CreditLabel.Size = UDim2.new(1, 0, 0, 15)
+CreditLabel.Font = Enum.Font.Gotham
+CreditLabel.Text = "Made by Orochimaru (UI Remastered)"
+CreditLabel.TextColor3 = Theme.TextDim
+CreditLabel.TextSize = 10
