@@ -266,7 +266,7 @@ local MainFrame = Instance.new("Frame")
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
 MainFrame.Position = UDim2.new(1, -260, 0.6, -110) 
-MainFrame.Size = UDim2.fromOffset(240, 210) 
+MainFrame.Size = UDim2.fromOffset(240, 245) 
 MainFrame.Active = true
 MainFrame.Draggable = true
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
@@ -443,6 +443,9 @@ LocalPlayer.CharacterAdded:Connect(function()
 	end
 end)
 
+--------------------------------------------------
+--// TROLL PAGE (CẬP NHẬT GIAO DIỆN)
+--------------------------------------------------
 local TargetBox = Instance.new("TextBox")
 TargetBox.Parent = TrollPage
 TargetBox.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
@@ -471,11 +474,23 @@ ToggleRagdollTargetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleRagdollTargetBtn.TextSize = 13
 Instance.new("UICorner", ToggleRagdollTargetBtn).CornerRadius = UDim.new(0, 6)
 
+-- [RAGDOLL ALL BUTTON]
+local RagdollAllBtn = Instance.new("TextButton")
+RagdollAllBtn.Parent = TrollPage
+RagdollAllBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+RagdollAllBtn.Position = UDim2.fromOffset(0, 68) 
+RagdollAllBtn.Size = UDim2.new(1, 0, 0, 28)
+RagdollAllBtn.Font = Enum.Font.GothamBold
+RagdollAllBtn.Text = "RAGDOLL ALL"
+RagdollAllBtn.TextColor3 = Color3.fromRGB(255, 150, 50) 
+RagdollAllBtn.TextSize = 13
+Instance.new("UICorner", RagdollAllBtn).CornerRadius = UDim.new(0, 6)
+
 -- [SPAM NOISE BUTTON]
 local ToggleSpamNoiseBtn = Instance.new("TextButton")
 ToggleSpamNoiseBtn.Parent = TrollPage
 ToggleSpamNoiseBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-ToggleSpamNoiseBtn.Position = UDim2.fromOffset(0, 68) 
+ToggleSpamNoiseBtn.Position = UDim2.fromOffset(0, 102) 
 ToggleSpamNoiseBtn.Size = UDim2.new(1, 0, 0, 28)
 ToggleSpamNoiseBtn.Font = Enum.Font.GothamBold
 ToggleSpamNoiseBtn.Text = "SPAM NOISE: OFF"
@@ -507,7 +522,6 @@ ToggleRagdollTargetBtn.MouseButton1Click:Connect(function()
     
     TargetBox.Text = targetPlayer.Name
 
-	-- Hiệu ứng click
 	TweenService:Create(ToggleRagdollTargetBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
 	task.wait(0.1)
 	TweenService:Create(ToggleRagdollTargetBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
@@ -541,6 +555,62 @@ ToggleRagdollTargetBtn.MouseButton1Click:Connect(function()
 			ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
 		end)
 	end
+end)
+
+-- [RAGDOLL ALL FUNCTION]
+local isRagdollingAll = false
+
+RagdollAllBtn.MouseButton1Click:Connect(function()
+	if isRagdollingAll then return end
+	isRagdollingAll = true
+
+	TweenService:Create(RagdollAllBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
+	RagdollAllBtn.Text = "RAGDOLLING..."
+	task.wait(0.1)
+	TweenService:Create(RagdollAllBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
+
+	task.spawn(function()
+		local processedPlayers = {} -- Lưu lại ai đã bị cast để tránh trùng trong chu kỳ này
+		
+		for _, player in ipairs(Players:GetPlayers()) do
+			-- Kiểm tra xem người chơi đã bị tác động chưa và tránh tự target chính mình
+			if player ~= Players.LocalPlayer and player.Character and not processedPlayers[player] then
+				pcall(function()
+					local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
+					local args = {
+						{
+							["\194\152"] = {
+								soundAsset,
+								{
+									ParentFolder = soundAsset.Parent,
+									RollOffMode = Enum.RollOffMode.Inverse,
+									Looped = false,
+									MinDistance = 5000,
+									MaxDistance = 5000,
+									Name = "",
+									Volume = 0.5,
+									RandomizePlaybackSpeed = true,
+									PlayOnRemove = true
+								}
+							},
+							["\194\169"] = {
+								player.Character,
+								false
+							}
+						},
+						{}
+					}
+					ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
+				end)
+				
+				processedPlayers[player] = true
+				task.wait(0.3) -- Đợi 0.5s trước khi tác động lên người tiếp theo
+			end
+		end
+		
+		isRagdollingAll = false
+		RagdollAllBtn.Text = "RAGDOLL ALL"
+	end)
 end)
 
 -- [SPAM NOISE LOOP]
@@ -588,7 +658,7 @@ ToggleSpamNoiseBtn.MouseButton1Click:Connect(function()
 						end)
 					end
 				end
-				task.wait(0.1)
+				task.wait(3)
 			end
 		end)
 	else
