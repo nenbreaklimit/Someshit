@@ -155,7 +155,8 @@ local function ProcessPlayer(player)
     local function Check()
         local isTarget, reason = EvaluatePlayer(player)
         if isTarget and not ActiveTrackers[player] then
-            SendSystemNotice("⚠️ CC/MOD DETECTED", player.Name .. " | " .. reason)
+            -- [ĐÃ SỬA]: Chỉ thông báo Tên người chơi, loại bỏ CommandLevel
+            SendSystemNotice("⚠️ CC/MOD DETECTED", player.Name)
             PlayAlertSound()
             ApplyStealthESP(player, reason)
         end
@@ -220,6 +221,7 @@ end
 
 getgenv().AutoFarmDelivery = false
 getgenv().SpamNoiseToggled = false
+getgenv().FarmScriptLoaded = false -- [ĐÃ SỬA]: Biến kiểm soát việc nạp script farm duy nhất 1 lần
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "OrochimaruHub"
@@ -424,12 +426,16 @@ local function executeFarmScript()
 	end)
 end
 
+-- [ĐÃ SỬA]: Xử lý nút Farm chuẩn xác, ngăn loadstring trùng lặp gây lag
 ToggleFarmBtn.MouseButton1Click:Connect(function()
 	getgenv().AutoFarmDelivery = not getgenv().AutoFarmDelivery
 	if getgenv().AutoFarmDelivery then
 		ToggleFarmBtn.Text = "AUTO FARM: ON"
 		ToggleFarmBtn.BackgroundColor3 = Color3.fromRGB(55, 170, 85)
-		task.spawn(executeFarmScript)
+		if not getgenv().FarmScriptLoaded then
+			getgenv().FarmScriptLoaded = true
+			task.spawn(executeFarmScript)
+		end
 	else
 		ToggleFarmBtn.Text = "AUTO FARM: OFF"
 		ToggleFarmBtn.BackgroundColor3 = Color3.fromRGB(170, 55, 55)
@@ -438,13 +444,14 @@ end)
 
 LocalPlayer.CharacterAdded:Connect(function()
 	task.wait(1.5)
-	if getgenv().AutoFarmDelivery then
+	if getgenv().AutoFarmDelivery and not getgenv().FarmScriptLoaded then
+		getgenv().FarmScriptLoaded = true
 		task.spawn(executeFarmScript)
 	end
 end)
 
 --------------------------------------------------
---// TROLL PAGE (CẬP NHẬT GIAO DIỆN)
+--// TROLL PAGE (CẬP NHẬT GIAO DIỆN & ANTI TELEPORT)
 --------------------------------------------------
 local TargetBox = Instance.new("TextBox")
 TargetBox.Parent = TrollPage
@@ -474,7 +481,7 @@ ToggleRagdollTargetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleRagdollTargetBtn.TextSize = 13
 Instance.new("UICorner", ToggleRagdollTargetBtn).CornerRadius = UDim.new(0, 6)
 
--- [RAGDOLL ALL BUTTON] (Đã đổi thành nút Bật/Tắt)
+-- [RAGDOLL ALL BUTTON]
 local RagdollAllBtn = Instance.new("TextButton")
 RagdollAllBtn.Parent = TrollPage
 RagdollAllBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
@@ -509,7 +516,7 @@ local function GetPlayerFromString(str)
 	return nil
 end
 
--- [RAGDOLL TARGET FUNCTION]
+-- [RAGDOLL TARGET FUNCTION - ĐÃ BỔ SUNG ANTI-TELEPORT]
 ToggleRagdollTargetBtn.MouseButton1Click:Connect(function()
 	local targetPlayer = GetPlayerFromString(TargetBox.Text)
     
@@ -527,6 +534,12 @@ ToggleRagdollTargetBtn.MouseButton1Click:Connect(function()
 	TweenService:Create(ToggleRagdollTargetBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
 
 	if targetPlayer.Character then
+		-- [ANTI-TELEPORT]: Khóa vị trí bản thân ngay trước khi tung chiêu
+		local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+		if myHRP then
+			myHRP.Anchored = true
+		end
+
 		pcall(function()
 			local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
 			local args = {
@@ -554,30 +567,34 @@ ToggleRagdollTargetBtn.MouseButton1Click:Connect(function()
 			}
 			ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
 		end)
+
+		-- [ANTI-TELEPORT]: Mở khóa di chuyển sau 0.2 giây
+		task.delay(0.2, function()
+			if myHRP then
+				myHRP.Anchored = false
+			end
+		end)
 	end
 end)
 
--- [RAGDOLL ALL FUNCTION - BẬT/TẮT, GIỮ VỊ TRÍ, LOOP 0.5s]
+-- [RAGDOLL ALL FUNCTION]
 local isRagdollingAll = false
 
 RagdollAllBtn.MouseButton1Click:Connect(function()
-	isRagdollingAll = not isRagdollingAll -- Đảo ngược trạng thái Bật/Tắt
+	isRagdollingAll = not isRagdollingAll
 
-	-- Hiệu ứng khi bấm nút
 	TweenService:Create(RagdollAllBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
 	task.wait(0.1)
 	TweenService:Create(RagdollAllBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
 
 	if isRagdollingAll then
-		-- Trạng thái BẬT
 		RagdollAllBtn.Text = "RAGDOLL ALL: ON"
-		RagdollAllBtn.TextColor3 = Color3.fromRGB(100, 255, 100) -- Đổi sang màu xanh lá
+		RagdollAllBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
 
 		task.spawn(function()
 			local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
 			
 			while isRagdollingAll do
-				-- Khóa vị trí bản thân liên tục trong vòng lặp để tránh bị game ép dịch chuyển
 				if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
 					LocalPlayer.Character.HumanoidRootPart.Anchored = true
 				end
@@ -585,7 +602,6 @@ RagdollAllBtn.MouseButton1Click:Connect(function()
 				local allPlayers = Players:GetPlayers()
 				
 				for _, player in ipairs(allPlayers) do
-					-- Nếu người dùng tắt giữa chừng, thoát vòng lặp ngay lập tức
 					if not isRagdollingAll then break end
 					
 					if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") then
@@ -616,25 +632,20 @@ RagdollAllBtn.MouseButton1Click:Connect(function()
 							ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
 						end)
 						
-						-- Tốc độ thực thi và cách nhau mỗi lượt đổi người là 0.5 giây
 						task.wait(0.5)
 					end
 				end
-				-- Nghỉ 0.1s sau khi đã quét hết danh sách để tránh Crash nếu server chỉ có 1 mình bạn
 				task.wait(0.1) 
 			end
 
-			-- Mở khóa di chuyển khi vòng lặp hoàn toàn kết thúc
 			if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
 				LocalPlayer.Character.HumanoidRootPart.Anchored = false
 			end
 		end)
 	else
-		-- Trạng thái TẮT
 		RagdollAllBtn.Text = "RAGDOLL ALL: OFF"
-		RagdollAllBtn.TextColor3 = Color3.fromRGB(255, 150, 50) -- Trả về màu cam mặc định
+		RagdollAllBtn.TextColor3 = Color3.fromRGB(255, 150, 50)
 		
-		-- Mở khóa di chuyển tức thời khi tắt nút
 		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
 			LocalPlayer.Character.HumanoidRootPart.Anchored = false
 		end
@@ -696,6 +707,9 @@ ToggleSpamNoiseBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
+--------------------------------------------------
+--// MISC PAGE
+--------------------------------------------------
 local SpectateFrame = Instance.new("Frame")
 SpectateFrame.Parent = MiscPage
 SpectateFrame.BackgroundTransparency = 1
