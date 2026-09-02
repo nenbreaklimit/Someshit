@@ -474,14 +474,14 @@ ToggleRagdollTargetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleRagdollTargetBtn.TextSize = 13
 Instance.new("UICorner", ToggleRagdollTargetBtn).CornerRadius = UDim.new(0, 6)
 
--- [RAGDOLL ALL BUTTON]
+-- [RAGDOLL ALL BUTTON] (Đã đổi thành nút Bật/Tắt)
 local RagdollAllBtn = Instance.new("TextButton")
 RagdollAllBtn.Parent = TrollPage
 RagdollAllBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
 RagdollAllBtn.Position = UDim2.fromOffset(0, 68) 
 RagdollAllBtn.Size = UDim2.new(1, 0, 0, 28)
 RagdollAllBtn.Font = Enum.Font.GothamBold
-RagdollAllBtn.Text = "RAGDOLL ALL"
+RagdollAllBtn.Text = "RAGDOLL ALL: OFF"
 RagdollAllBtn.TextColor3 = Color3.fromRGB(255, 150, 50) 
 RagdollAllBtn.TextSize = 13
 Instance.new("UICorner", RagdollAllBtn).CornerRadius = UDim.new(0, 6)
@@ -557,60 +557,88 @@ ToggleRagdollTargetBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
--- [RAGDOLL ALL FUNCTION]
+-- [RAGDOLL ALL FUNCTION - BẬT/TẮT, GIỮ VỊ TRÍ, LOOP 0.5s]
 local isRagdollingAll = false
 
 RagdollAllBtn.MouseButton1Click:Connect(function()
-	if isRagdollingAll then return end
-	isRagdollingAll = true
+	isRagdollingAll = not isRagdollingAll -- Đảo ngược trạng thái Bật/Tắt
 
+	-- Hiệu ứng khi bấm nút
 	TweenService:Create(RagdollAllBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
-	RagdollAllBtn.Text = "RAGDOLLING..."
 	task.wait(0.1)
 	TweenService:Create(RagdollAllBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
 
-	task.spawn(function()
-		local processedPlayers = {} -- Lưu lại ai đã bị cast để tránh trùng trong chu kỳ này
-		
-		for _, player in ipairs(Players:GetPlayers()) do
-			-- Kiểm tra xem người chơi đã bị tác động chưa và tránh tự target chính mình
-			if player ~= Players.LocalPlayer and player.Character and not processedPlayers[player] then
-				pcall(function()
-					local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
-					local args = {
-						{
-							["\194\152"] = {
-								soundAsset,
-								{
-									ParentFolder = soundAsset.Parent,
-									RollOffMode = Enum.RollOffMode.Inverse,
-									Looped = false,
-									MinDistance = 5000,
-									MaxDistance = 5000,
-									Name = "",
-									Volume = 0.5,
-									RandomizePlaybackSpeed = true,
-									PlayOnRemove = true
-								}
-							},
-							["\194\169"] = {
-								player.Character,
-								false
-							}
-						},
-						{}
-					}
-					ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
-				end)
+	if isRagdollingAll then
+		-- Trạng thái BẬT
+		RagdollAllBtn.Text = "RAGDOLL ALL: ON"
+		RagdollAllBtn.TextColor3 = Color3.fromRGB(100, 255, 100) -- Đổi sang màu xanh lá
+
+		task.spawn(function()
+			local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
+			
+			while isRagdollingAll do
+				-- Khóa vị trí bản thân liên tục trong vòng lặp để tránh bị game ép dịch chuyển
+				if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+					LocalPlayer.Character.HumanoidRootPart.Anchored = true
+				end
 				
-				processedPlayers[player] = true
-				task.wait(0.6) -- Đợi 0.5s trước khi tác động lên người tiếp theo
+				local allPlayers = Players:GetPlayers()
+				
+				for _, player in ipairs(allPlayers) do
+					-- Nếu người dùng tắt giữa chừng, thoát vòng lặp ngay lập tức
+					if not isRagdollingAll then break end
+					
+					if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") then
+						pcall(function()
+							local args = {
+								{
+									["\194\152"] = {
+										soundAsset,
+										{
+											ParentFolder = soundAsset.Parent,
+											RollOffMode = Enum.RollOffMode.Inverse,
+											Looped = false,
+											MinDistance = 5000,
+											MaxDistance = 5000,
+											Name = "",
+											Volume = 0.5,
+											RandomizePlaybackSpeed = true,
+											PlayOnRemove = true
+										}
+									},
+									["\194\169"] = {
+										player.Character,
+										false
+									}
+								},
+								{}
+							}
+							ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
+						end)
+						
+						-- Tốc độ thực thi và cách nhau mỗi lượt đổi người là 0.5 giây
+						task.wait(0.5)
+					end
+				end
+				-- Nghỉ 0.1s sau khi đã quét hết danh sách để tránh Crash nếu server chỉ có 1 mình bạn
+				task.wait(0.1) 
 			end
-		end
+
+			-- Mở khóa di chuyển khi vòng lặp hoàn toàn kết thúc
+			if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+				LocalPlayer.Character.HumanoidRootPart.Anchored = false
+			end
+		end)
+	else
+		-- Trạng thái TẮT
+		RagdollAllBtn.Text = "RAGDOLL ALL: OFF"
+		RagdollAllBtn.TextColor3 = Color3.fromRGB(255, 150, 50) -- Trả về màu cam mặc định
 		
-		isRagdollingAll = false
-		RagdollAllBtn.Text = "RAGDOLL ALL"
-	end)
+		-- Mở khóa di chuyển tức thời khi tắt nút
+		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+			LocalPlayer.Character.HumanoidRootPart.Anchored = false
+		end
+	end
 end)
 
 -- [SPAM NOISE LOOP]
