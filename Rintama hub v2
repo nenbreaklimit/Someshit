@@ -155,8 +155,7 @@ local function ProcessPlayer(player)
     local function Check()
         local isTarget, reason = EvaluatePlayer(player)
         if isTarget and not ActiveTrackers[player] then
-            -- Chỉ giữ lại tên người chơi, bỏ phần `| reason`
-            SendSystemNotice("⚠️ CC/MOD DETECTED", player.Name)
+            SendSystemNotice("⚠️ CC/MOD DETECTED", player.Name .. " | " .. reason)
             PlayAlertSound()
             ApplyStealthESP(player, reason)
         end
