@@ -657,6 +657,9 @@ RagdollAllBtn.MouseButton1Click:Connect(function()
 end)
 
 -- [SPAM NOISE LOOP]
+-- Khai báo biến để quản lý luồng chạy ngầm
+local spamNoiseTask = nil
+
 ToggleSpamNoiseBtn.MouseButton1Click:Connect(function()
 	getgenv().SpamNoiseToggled = not getgenv().SpamNoiseToggled
 	
@@ -665,7 +668,12 @@ ToggleSpamNoiseBtn.MouseButton1Click:Connect(function()
 		ToggleSpamNoiseBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
 		TweenService:Create(ToggleSpamNoiseBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(50, 70, 50)}):Play()
 		
-		task.spawn(function()
+		-- Hủy triệt để luồng cũ nếu nó vẫn còn tồn tại trước khi tạo luồng mới
+		if spamNoiseTask then
+			task.cancel(spamNoiseTask)
+		end
+		
+		spamNoiseTask = task.spawn(function()
 			local RedEvent = ReplicatedStorage:WaitForChild("RedEvent")
 			local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
 			local parentFolder = soundAsset.Parent
@@ -701,15 +709,22 @@ ToggleSpamNoiseBtn.MouseButton1Click:Connect(function()
 						end)
 					end
 				end
-				task.wait(3)
+				task.wait(3) -- Chờ 3 giây giữa mỗi đợt spam. Bạn có thể giảm số này để spam nhanh hơn (VD: 1 hoặc 0.5)
 			end
 		end)
 	else
 		ToggleSpamNoiseBtn.Text = "SPAM NOISE: OFF"
 		ToggleSpamNoiseBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
 		TweenService:Create(ToggleSpamNoiseBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
+		
+		-- Ép dừng vòng lặp ngay lập tức khi tắt
+		if spamNoiseTask then
+			task.cancel(spamNoiseTask)
+			spamNoiseTask = nil
+		end
 	end
 end)
+
 
 local SpectateFrame = Instance.new("Frame")
 SpectateFrame.Parent = MiscPage
