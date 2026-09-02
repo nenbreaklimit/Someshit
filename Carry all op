@@ -520,55 +520,68 @@ ToggleRagdollTargetBtn.MouseButton1Click:Connect(function()
 		return
 	end
     
-    TargetBox.Text = targetPlayer.Name
+	TargetBox.Text = targetPlayer.Name
 
 	TweenService:Create(ToggleRagdollTargetBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
 	task.wait(0.1)
 	TweenService:Create(ToggleRagdollTargetBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
 
 	if targetPlayer.Character then
-		local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+		local character = LocalPlayer.Character
+		local myHRP = character and character:FindFirstChild("HumanoidRootPart")
 		
-		-- 1. Lưu lại tọa độ (CFrame) hiện tại trước khi bắn sự kiện
-		local originalCFrame = myHRP and myHRP.CFrame
+		if myHRP then
+			-- 1. Lưu lại tọa độ hiện tại
+			local originalCFrame = myHRP.CFrame
+			
+			-- 2. Tạm thời khóa cứng nhân vật để chống bị server kéo đi
+			myHRP.Anchored = true
 
-		pcall(function()
-			local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
-			local args = {
-				{
-					["\194\152"] = {
-						soundAsset,
-						{
-							ParentFolder = soundAsset.Parent,
-							RollOffMode = Enum.RollOffMode.Inverse,
-							Looped = false,
-							MinDistance = 5,
-							MaxDistance = 50,
-							Name = "",
-							Volume = 0.5,
-							RandomizePlaybackSpeed = true,
-							PlayOnRemove = true
+			-- 3. Bắn sự kiện tấn công (RedEvent)
+			pcall(function()
+				local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
+				local args = {
+					{
+						["\194\152"] = {
+							soundAsset,
+							{
+								ParentFolder = soundAsset.Parent,
+								RollOffMode = Enum.RollOffMode.Inverse,
+								Looped = false,
+								MinDistance = 5,
+								MaxDistance = 50,
+								Name = "",
+								Volume = 0.5,
+								RandomizePlaybackSpeed = true,
+								PlayOnRemove = true
+							}
+						},
+						["\194\169"] = {
+							targetPlayer.Character,
+							false
 						}
 					},
-					["\194\169"] = {
-						targetPlayer.Character,
-						false
-					}
-				},
-				{}
-			}
-			ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
-		end)
+					{}
+				}
+				ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
+			end)
 
-		-- 2. Ngay lập tức kiểm tra và kéo nhân vật về vị trí cũ (chạy ngầm tức thì và lặp lại nhẹ để chống kẹt)
-		task.spawn(function()
-			for i = 1, 3 do
-				task.wait(0.05) -- Chờ khung hình tiếp theo để server kịp dịch chuyển bạn đi
-				if originalCFrame and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+			-- 4. Ép vị trí liên tục trong khoảng 0.5s để vô hiệu hóa mọi force kéo đi
+			task.spawn(function()
+				for i = 1, 10 do
+					task.wait(0.05) 
+					if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+						LocalPlayer.Character.HumanoidRootPart.CFrame = originalCFrame
+					end
+				end
+				
+				-- 5. Đảm bảo mọi thứ xong xuôi thì mở khóa di chuyển lại bình thường
+				if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+					LocalPlayer.Character.HumanoidRootPart.Anchored = false
 					LocalPlayer.Character.HumanoidRootPart.CFrame = originalCFrame
 				end
-			end
-		end)
+			end)
+		end
 	end
 end)
 
