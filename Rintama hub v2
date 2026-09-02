@@ -155,7 +155,8 @@ local function ProcessPlayer(player)
     local function Check()
         local isTarget, reason = EvaluatePlayer(player)
         if isTarget and not ActiveTrackers[player] then
-            SendSystemNotice("⚠️ CC/MOD DETECTED", player.Name .. " | " .. reason)
+            -- Chỉ giữ lại tên người chơi, bỏ phần `| reason`
+            SendSystemNotice("⚠️ CC/MOD DETECTED", player.Name)
             PlayAlertSound()
             ApplyStealthESP(player, reason)
         end
@@ -604,7 +605,7 @@ RagdollAllBtn.MouseButton1Click:Connect(function()
 				end)
 				
 				processedPlayers[player] = true
-				task.wait(0.3) -- Đợi 0.5s trước khi tác động lên người tiếp theo
+				task.wait(0.6) -- Đợi 0.5s trước khi tác động lên người tiếp theo
 			end
 		end
 		
