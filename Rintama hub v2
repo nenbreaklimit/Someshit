@@ -219,8 +219,7 @@ if targetParent:FindFirstChild("OrochimaruHub") then
 end
 
 getgenv().AutoFarmDelivery = false
-getgenv().GrabAllToggled = false
-getgenv().CarryTargetToggled = false
+getgenv().SpamNoiseToggled = false
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "OrochimaruHub"
@@ -239,8 +238,7 @@ end
 
 ScreenGui.Destroying:Connect(function()
 	getgenv().AutoFarmDelivery = false
-	getgenv().GrabAllToggled = false
-	getgenv().CarryTargetToggled = false
+	getgenv().SpamNoiseToggled = false
 end)
 
 local chatWindow = TextChatService:FindFirstChildOfClass("ChatWindowConfiguration")
@@ -461,27 +459,29 @@ local TargetBoxStroke = Instance.new("UIStroke", TargetBox)
 TargetBoxStroke.Thickness = 1
 TargetBoxStroke.Color = Color3.fromRGB(70, 70, 90)
 
-local ToggleCarryTargetBtn = Instance.new("TextButton")
-ToggleCarryTargetBtn.Parent = TrollPage
-ToggleCarryTargetBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-ToggleCarryTargetBtn.Position = UDim2.fromOffset(0, 34) 
-ToggleCarryTargetBtn.Size = UDim2.new(1, 0, 0, 28)
-ToggleCarryTargetBtn.Font = Enum.Font.GothamBold
-ToggleCarryTargetBtn.Text = "CARRY TARGET: OFF"
-ToggleCarryTargetBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-ToggleCarryTargetBtn.TextSize = 13
-Instance.new("UICorner", ToggleCarryTargetBtn).CornerRadius = UDim.new(0, 6)
+-- [RAGDOLL TARGET BUTTON]
+local ToggleRagdollTargetBtn = Instance.new("TextButton")
+ToggleRagdollTargetBtn.Parent = TrollPage
+ToggleRagdollTargetBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+ToggleRagdollTargetBtn.Position = UDim2.fromOffset(0, 34) 
+ToggleRagdollTargetBtn.Size = UDim2.new(1, 0, 0, 28)
+ToggleRagdollTargetBtn.Font = Enum.Font.GothamBold
+ToggleRagdollTargetBtn.Text = "RAGDOLL TARGET"
+ToggleRagdollTargetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleRagdollTargetBtn.TextSize = 13
+Instance.new("UICorner", ToggleRagdollTargetBtn).CornerRadius = UDim.new(0, 6)
 
-local ToggleCarryAllBtn = Instance.new("TextButton")
-ToggleCarryAllBtn.Parent = TrollPage
-ToggleCarryAllBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-ToggleCarryAllBtn.Position = UDim2.fromOffset(0, 68) 
-ToggleCarryAllBtn.Size = UDim2.new(1, 0, 0, 28)
-ToggleCarryAllBtn.Font = Enum.Font.GothamBold
-ToggleCarryAllBtn.Text = "CARRY ALL: OFF"
-ToggleCarryAllBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-ToggleCarryAllBtn.TextSize = 13
-Instance.new("UICorner", ToggleCarryAllBtn).CornerRadius = UDim.new(0, 6)
+-- [SPAM NOISE BUTTON]
+local ToggleSpamNoiseBtn = Instance.new("TextButton")
+ToggleSpamNoiseBtn.Parent = TrollPage
+ToggleSpamNoiseBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+ToggleSpamNoiseBtn.Position = UDim2.fromOffset(0, 68) 
+ToggleSpamNoiseBtn.Size = UDim2.new(1, 0, 0, 28)
+ToggleSpamNoiseBtn.Font = Enum.Font.GothamBold
+ToggleSpamNoiseBtn.Text = "SPAM NOISE: OFF"
+ToggleSpamNoiseBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+ToggleSpamNoiseBtn.TextSize = 13
+Instance.new("UICorner", ToggleSpamNoiseBtn).CornerRadius = UDim.new(0, 6)
 
 local function GetPlayerFromString(str)
 	if not str or str == "" then return nil end
@@ -494,117 +494,107 @@ local function GetPlayerFromString(str)
 	return nil
 end
 
-local CurrentTarget = nil
+-- [RAGDOLL TARGET FUNCTION]
+ToggleRagdollTargetBtn.MouseButton1Click:Connect(function()
+	local targetPlayer = GetPlayerFromString(TargetBox.Text)
+    
+	if not targetPlayer then
+		TargetBox.Text = "Not found!"
+		task.wait(1)
+		TargetBox.Text = ""
+		return
+	end
+    
+    TargetBox.Text = targetPlayer.Name
 
-ToggleCarryTargetBtn.MouseButton1Click:Connect(function()
-	getgenv().CarryTargetToggled = not getgenv().CarryTargetToggled
+	-- Hiệu ứng click
+	TweenService:Create(ToggleRagdollTargetBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
+	task.wait(0.1)
+	TweenService:Create(ToggleRagdollTargetBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
 
-	if getgenv().CarryTargetToggled then
-		CurrentTarget = GetPlayerFromString(TargetBox.Text)
-		if not CurrentTarget then
-			TargetBox.Text = "Not found!"
-			task.wait(1)
-			TargetBox.Text = ""
-			getgenv().CarryTargetToggled = false
-			return
-		end
-
-		TargetBox.Text = CurrentTarget.Name
-		ToggleCarryTargetBtn.Text = "CARRY TARGET: ON"
-		ToggleCarryTargetBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
-		TweenService:Create(ToggleCarryTargetBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(50, 70, 50)}):Play()
-
-		task.spawn(function()
-			while getgenv().CarryTargetToggled and CurrentTarget do
-				if CurrentTarget.Character and CurrentTarget ~= LocalPlayer then
-					pcall(function()
-						local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
-						local args = { { ["\194\162"] = { CurrentTarget.Character, true }, ["\194\145"] = { soundAsset, { ParentFolder = soundAsset.Parent, RollOffMode = Enum.RollOffMode.Inverse, Looped = false, MinDistance = 5000, MaxDistance = 5000, Name = "", Volume = 0.5, RandomizePlaybackSpeed = true, PlayOnRemove = true } } }, {} }
-						ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
-					end)
-				end
-				task.wait(0.05)
-			end
+	if targetPlayer.Character then
+		pcall(function()
+			local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
+			local args = {
+				{
+					["\194\152"] = {
+						soundAsset,
+						{
+							ParentFolder = soundAsset.Parent,
+							RollOffMode = Enum.RollOffMode.Inverse,
+							Looped = false,
+							MinDistance = 5,
+							MaxDistance = 50,
+							Name = "",
+							Volume = 0.5,
+							RandomizePlaybackSpeed = true,
+							PlayOnRemove = true
+						}
+					},
+					["\194\169"] = {
+						targetPlayer.Character,
+						false
+					}
+				},
+				{}
+			}
+			ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
 		end)
-	else
-		ToggleCarryTargetBtn.Text = "CARRY TARGET: OFF"
-		ToggleCarryTargetBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-		TweenService:Create(ToggleCarryTargetBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
-
-		if CurrentTarget and CurrentTarget.Character then
-			pcall(function()
-				local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
-				local args = { { ["\194\162"] = { CurrentTarget.Character, false }, ["\194\145"] = { soundAsset, { ParentFolder = soundAsset.Parent, RollOffMode = Enum.RollOffMode.Inverse, Looped = false, MinDistance = 5000, MaxDistance = 5000, Name = "", Volume = 0.5, RandomizePlaybackSpeed = true, PlayOnRemove = true } } }, {} }
-				ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
-			end)
-		end
-		CurrentTarget = nil
 	end
 end)
 
-ToggleCarryAllBtn.MouseButton1Click:Connect(function()
-	getgenv().GrabAllToggled = not getgenv().GrabAllToggled
+-- [SPAM NOISE LOOP]
+ToggleSpamNoiseBtn.MouseButton1Click:Connect(function()
+	getgenv().SpamNoiseToggled = not getgenv().SpamNoiseToggled
 	
-	if getgenv().GrabAllToggled then
-		ToggleCarryAllBtn.Text = "CARRY ALL: ON"
-		ToggleCarryAllBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
-		TweenService:Create(ToggleCarryAllBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(50, 70, 50)}):Play()
+	if getgenv().SpamNoiseToggled then
+		ToggleSpamNoiseBtn.Text = "SPAM NOISE: ON"
+		ToggleSpamNoiseBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+		TweenService:Create(ToggleSpamNoiseBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(50, 70, 50)}):Play()
 		
-		for _, player in ipairs(Players:GetPlayers()) do
-			if player ~= LocalPlayer and player.Character then
-				local args = {
-					{
-						["\194\162"] = { player.Character, true },
-						["\194\145"] = {
-							ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013"),
-							{
-								ParentFolder = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"),
-								RollOffMode = Enum.RollOffMode.Inverse,
-								Looped = false,
-								MinDistance = 5,
-								MaxDistance = 50,
-								Name = "",
-								Volume = 0.5,
-								RandomizePlaybackSpeed = true,
-								PlayOnRemove = true
+		task.spawn(function()
+			local RedEvent = ReplicatedStorage:WaitForChild("RedEvent")
+			local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
+			local parentFolder = soundAsset.Parent
+
+			while getgenv().SpamNoiseToggled do
+				for _, player in ipairs(Players:GetPlayers()) do
+					if player ~= Players.LocalPlayer and player.Character then
+						pcall(function()
+							local args = {
+								{
+									["\194\152"] = {
+										soundAsset,
+										{
+											ParentFolder = parentFolder,
+											RollOffMode = Enum.RollOffMode.Inverse,
+											Looped = false,
+											MinDistance = 5000,
+											MaxDistance = 5000,
+											Name = "",
+											Volume = 0.5,
+											RandomizePlaybackSpeed = true,
+											PlayOnRemove = true
+										}
+									},
+									["\194\169"] = {
+										player.Character,
+										false
+									}
+								},
+								{}
 							}
-						}
-					},
-					{}
-				}
-				ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
+							RedEvent:FireServer(unpack(args))
+						end)
+					end
+				end
+				task.wait(0.1)
 			end
-		end
+		end)
 	else
-		ToggleCarryAllBtn.Text = "CARRY ALL: OFF"
-		ToggleCarryAllBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-		TweenService:Create(ToggleCarryAllBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
-		
-		for _, player in pairs(Players:GetPlayers()) do
-			if player.Character then
-				local args = {
-					{
-						["\194\162"] = { player.Character, false },
-						["\194\145"] = {
-							ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013"),
-							{
-								ParentFolder = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"),
-								RollOffMode = Enum.RollOffMode.Inverse,
-								Looped = false,
-								MinDistance = 5,
-								MaxDistance = 50,
-								Name = "",
-								Volume = 0.5,
-								RandomizePlaybackSpeed = true,
-								PlayOnRemove = true
-							}
-						}
-					},
-					{}
-				}
-				ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
-			end
-		end
+		ToggleSpamNoiseBtn.Text = "SPAM NOISE: OFF"
+		ToggleSpamNoiseBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+		TweenService:Create(ToggleSpamNoiseBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
 	end
 end)
 
