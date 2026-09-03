@@ -1,903 +1,173 @@
---// =====================================================
---// ULTIMATE COMBINED SCRIPT: DETECTOR + OROCHIMARU HUB
---// =====================================================
-
+--==================================================
+-- AUTO FARM DELIVERY - FIXED & OPTIMIZED
+--==================================================
 local Players = game:GetService("Players")
-local StarterGui = game:GetService("StarterGui")
-local SoundService = game:GetService("SoundService")
-local TextChatService = game:GetService("TextChatService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
 
-local LocalPlayer = Players.LocalPlayer
+local player = Players.LocalPlayer
 
---------------------------------------------------
---// 1. CC / MOD DETECTOR & STEALTH ESP
---------------------------------------------------
-local CONFIG = {
-    SoundId = "rbxassetid://9068077052",
-    SoundVolume = 2,
-    NotificationDuration = 10,
-    TargetColor = Color3.fromRGB(255, 50, 50),
-    FillTransparency = 1,
-    OutlineTransparency = 0,
+-- Dừng các phiên bản script cũ nếu đang chạy dở
+getgenv().AutoFarmDelivery = false
+task.wait(0.1)
+getgenv().AutoFarmDelivery = true
+
+-- Cấu hình
+local Config = {
+    StartPos = CFrame.new(-152.8, -21, 668.1),
+    DeliveryOffset = CFrame.new(0, -10, 0),
+    QuestName = "Fujiwara Bunta",
+    WaitDelay = 0.15 -- Giảm thời gian chờ để farm nhanh hơn
 }
 
-local ActiveTrackers = {} 
-local CoreContainer = nil
+-- Thông báo kích hoạt thành công
+pcall(function()
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Auto Farm",
+        Text = "Đã kích hoạt tự động Farm!",
+        Duration = 3
+    })
+end)
 
-if gethui then
-    CoreContainer = gethui()
-elseif syn and syn.protect_gui then
-    CoreContainer = Instance.new("Folder")
-    syn.protect_gui(CoreContainer)
-    CoreContainer.Parent = game:GetService("CoreGui")
-else
-    local success, core = pcall(function() return game:GetService("CoreGui") end)
-    CoreContainer = success and core or LocalPlayer:WaitForChild("PlayerGui")
+--==================================================
+-- ANTI-AFK
+--==================================================
+pcall(function()
+    for _, conn in pairs(getconnections(player.Idled)) do
+        if conn.Disable then conn:Disable() end
+    end
+end)
+
+player.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+--==================================================
+-- UTILITIES
+--==================================================
+local function getCharacterData()
+    local char = player.Character or player.CharacterAdded:Wait()
+    local root = char:WaitForChild("HumanoidRootPart", 5)
+    local hum = char:WaitForChild("Humanoid", 5)
+    return char, root, hum
 end
 
-local function PlayAlertSound()
-    task.spawn(function()
-        local sound = Instance.new("Sound")
-        sound.SoundId = CONFIG.SoundId
-        sound.Volume = CONFIG.SoundVolume
-        sound.Parent = SoundService
-        sound:Play()
-        sound.Ended:Wait()
-        sound:Destroy()
-    end)
+local function teleportTo(targetCFrame)
+    local _, root = getCharacterData()
+    if root then
+        root.CFrame = targetCFrame
+    end
 end
 
-local function SendSystemNotice(title, text)
+--==================================================
+-- KHÔNG BAO GIỜ RỚT (HOVER LOCK)
+--==================================================
+local bodyVel
+
+local function applyFloat()
+    local _, root, hum = getCharacterData()
+    if not root then return end
+
+    if hum then
+        hum.PlatformStand = true -- Triệt tiêu hiệu ứng trọng lực tác động lên nhân vật
+    end
+
+    if not root:FindFirstChild("FarmBodyVelocity") then
+        bodyVel = Instance.new("BodyVelocity")
+        bodyVel.Name = "FarmBodyVelocity"
+        bodyVel.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+        bodyVel.Velocity = Vector3.zero
+        bodyVel.Parent = root
+    end
+end
+
+local floatConnection
+floatConnection = RunService.Heartbeat:Connect(function()
+    if not getgenv().AutoFarmDelivery then
+        if bodyVel then bodyVel:Destroy() end
+        local _, _, hum = getCharacterData()
+        if hum then hum.PlatformStand = false end
+        if floatConnection then floatConnection:Disconnect() end
+        return
+    end
+
     pcall(function()
-        StarterGui:SetCore("SendNotification", {
-            Title = title,
-            Text = text,
-            Duration = CONFIG.NotificationDuration
-        })
+        applyFloat()
+        local _, root = getCharacterData()
+        if root then
+            root.AssemblyLinearVelocity = Vector3.zero
+            root.AssemblyAngularVelocity = Vector3.zero
+        end
     end)
-    
-    if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-        local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
-        if channel then
-            channel:DisplaySystemMessage("<font color='#FF3232'><b>[" .. title .. "]: </b>" .. text .. "</font>")
-        end
-    end
-end
+end)
 
-local function EvaluatePlayer(player)
-    if player == LocalPlayer then return false, nil end
-
-    local cmdVal = player:FindFirstChild("CommandLevel")
-    if cmdVal and cmdVal:IsA("ValueBase") and (tonumber(cmdVal.Value) or 0) > 0 then
-        return true, "CommandLevel " .. tostring(cmdVal.Value)
-    end
-    
-    local attrLevel = tonumber(player:GetAttribute("CommandLevel")) or 0
-    if attrLevel > 0 then
-        return true, "CommandLevel " .. tostring(attrLevel)
-    end
-
-    return false, nil
-end
-
-local function DestroyESP(player)
-    if ActiveTrackers[player] then
-        for _, item in ipairs(ActiveTrackers[player].Instances or {}) do
-            if item then item:Destroy() end
-        end
-        for _, conn in ipairs(ActiveTrackers[player].Connections or {}) do
-            if conn.Connected then conn:Disconnect() end
-        end
-        ActiveTrackers[player] = nil
-    end
-end
-
-local function ApplyStealthESP(player, reason)
-    DestroyESP(player)
-
-    local tracker = { Instances = {}, Connections = {} }
-    ActiveTrackers[player] = tracker
-
-    local function RenderForCharacter(character)
-        if not character then return end
-        local hrp = character:WaitForChild("HumanoidRootPart", 5)
-        if not hrp then return end
-
-        local highlight = Instance.new("Highlight")
-        highlight.Name = "TargetESP_" .. player.Name
-        highlight.Adornee = character
-        highlight.FillColor = CONFIG.TargetColor
-        highlight.OutlineColor = CONFIG.TargetColor
-        highlight.FillTransparency = CONFIG.FillTransparency
-        highlight.OutlineTransparency = CONFIG.OutlineTransparency
-        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-        highlight.Parent = CoreContainer
-        table.insert(tracker.Instances, highlight)
-
-        local billboard = Instance.new("BillboardGui")
-        billboard.Name = "TargetTag_" .. player.Name
-        billboard.Adornee = hrp
-        billboard.Size = UDim2.new(0, 130, 0, 28)
-        billboard.StudsOffset = Vector3.new(0, 3.8, 0)
-        billboard.AlwaysOnTop = true
-        billboard.Parent = CoreContainer
-        table.insert(tracker.Instances, billboard)
-
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, 0, 1, 0)
-        label.BackgroundTransparency = 1
-        label.TextColor3 = CONFIG.TargetColor
-        label.TextStrokeTransparency = 0
-        label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-        label.Font = Enum.Font.SourceSansBold
-        label.TextSize = 12
-        label.Text = string.format("⚠️ CC / MOD ⚠️\n%s", player.Name)
-        label.Parent = billboard
-    end
-
-    if player.Character then
-        task.spawn(RenderForCharacter, player.Character)
-    end
-
-    local charConn = player.CharacterAdded:Connect(function(newChar)
-        task.wait(0.5)
-        RenderForCharacter(newChar)
+--==================================================
+-- CORE LOGIC
+--==================================================
+local function takeQuest()
+    pcall(function()
+        local args = { { [";"] = Config.QuestName }, {} }
+        ReplicatedStorage:WaitForChild("RedEvent", 3):FireServer(unpack(args))
     end)
-    table.insert(tracker.Connections, charConn)
 end
 
-local function ProcessPlayer(player)
-    if player == LocalPlayer then return end
-
-    local function Check()
-        local isTarget, reason = EvaluatePlayer(player)
-        if isTarget and not ActiveTrackers[player] then
-            SendSystemNotice("⚠️ CC/MOD DETECTED", player.Name .. " | " .. reason)
-            PlayAlertSound()
-            ApplyStealthESP(player, reason)
+local function findDeliveryNPC()
+    local foundNpc, foundRoot = nil, nil
+    pcall(function()
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("Model") and obj:FindFirstChild("DeliveryPulse", true) then
+                local root = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
+                if root then
+                    foundNpc = obj
+                    foundRoot = root
+                    break
+                end
+            end
         end
-    end
+    end)
+    return foundNpc, foundRoot
+end
 
-    Check()
+local function completeDelivery(npcName)
+    pcall(function()
+        local args = { { ["<"] = npcName }, {} }
+        ReplicatedStorage:WaitForChild("RedEvent", 3):FireServer(unpack(args))
+    end)
+end
 
-    local childConn = player.ChildAdded:Connect(function(child)
-        if child.Name == "CommandLevel" then
+--==================================================
+-- MAIN LOOP (TỰ ĐỘNG CHẠY NGAY KHI EXECUTE)
+--==================================================
+task.spawn(function()
+    while getgenv().AutoFarmDelivery do
+        -- 1. Dịch chuyển về vị trí bắt đầu
+        teleportTo(Config.StartPos)
+        task.wait(Config.WaitDelay)
+
+        if not getgenv().AutoFarmDelivery then break end
+
+        -- 2. Nhận Nhiệm vụ
+        takeQuest()
+        task.wait(Config.WaitDelay)
+
+        -- 3. Quét tìm NPC giao hàng (tối đa 10 lần)
+        local npc, root
+        for i = 1, 10 do
+            if not getgenv().AutoFarmDelivery then break end
+            npc, root = findDeliveryNPC()
+            if npc and root then break end
             task.wait(0.1)
-            Check()
-            local valConn = child:GetPropertyChangedSignal("Value"):Connect(Check)
-            if ActiveTrackers[player] then table.insert(ActiveTrackers[player].Connections, valConn) end
         end
-    end)
 
-    local attrConn = player.AttributeChanged:Connect(function(attrName)
-        if attrName == "CommandLevel" then
-            Check()
+        -- 4. Dịch chuyển & Hoàn thành giao hàng
+        if npc and root and getgenv().AutoFarmDelivery then
+            teleportTo(root.CFrame * Config.DeliveryOffset)
+            task.wait(Config.WaitDelay)
+            completeDelivery(npc.Name)
         end
-    end)
-    
-    local cleanupConn
-    cleanupConn = Players.PlayerRemoving:Connect(function(leavingPlayer)
-        if leavingPlayer == player then
-            DestroyESP(player)
-            if childConn.Connected then childConn:Disconnect() end
-            if attrConn.Connected then attrConn:Disconnect() end
-            if cleanupConn.Connected then cleanupConn:Disconnect() end
-        end
-    end)
-end
 
--- Kích hoạt Detector Engine
-task.spawn(function()
-    for _, p in ipairs(Players:GetPlayers()) do
-        task.spawn(ProcessPlayer, p)
+        task.wait(Config.WaitDelay)
     end
-
-    Players.PlayerAdded:Connect(function(p)
-        task.spawn(ProcessPlayer, p)
-    end)
-
-    print("⚡ [CC / MOD DETECTOR]: HỆ THỐNG ĐÃ KÍCH HOẠT (PURE COMMAND LEVEL)!")
 end)
-
---------------------------------------------------
---// 2. OROCHIMARU HUB GUI SYSTEM
---------------------------------------------------
-local targetParent
-if gethui then
-	targetParent = gethui()
-elseif syn and syn.protect_gui then
-	targetParent = game:GetService("CoreGui")
-else
-	targetParent = game:GetService("CoreGui")
-end
-
-if targetParent:FindFirstChild("OrochimaruHub") then
-	targetParent:FindFirstChild("OrochimaruHub"):Destroy()
-end
-
-getgenv().AutoFarmDelivery = false
-getgenv().SpamNoiseToggled = false
-
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "OrochimaruHub"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.IgnoreGuiInset = true
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-if gethui then
-	ScreenGui.Parent = gethui()
-elseif syn and syn.protect_gui then
-	syn.protect_gui(ScreenGui)
-	ScreenGui.Parent = game:GetService("CoreGui")
-else
-	ScreenGui.Parent = game:GetService("CoreGui")
-end
-
-ScreenGui.Destroying:Connect(function()
-	getgenv().AutoFarmDelivery = false
-	getgenv().SpamNoiseToggled = false
-end)
-
-local chatWindow = TextChatService:FindFirstChildOfClass("ChatWindowConfiguration")
-if chatWindow then
-    chatWindow.Enabled = true
-end
-
-local OpenBtn = Instance.new("TextButton")
-OpenBtn.Parent = ScreenGui
-OpenBtn.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
-OpenBtn.Position = UDim2.new(0.02, 0, 0.5, -20)
-OpenBtn.Size = UDim2.fromOffset(40, 40)
-OpenBtn.Font = Enum.Font.GothamBold
-OpenBtn.Text = "HUB"
-OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-OpenBtn.TextSize = 12
-OpenBtn.Visible = false
-Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(0, 10)
-
-local OpenStroke = Instance.new("UIStroke", OpenBtn)
-OpenStroke.Thickness = 2
-OpenStroke.Color = Color3.fromRGB(70, 70, 90)
-
-local MainFrame = Instance.new("Frame")
-MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
-MainFrame.Position = UDim2.new(1, -260, 0.6, -110) 
-MainFrame.Size = UDim2.fromOffset(240, 245) 
-MainFrame.Active = true
-MainFrame.Draggable = true
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
-
-local MainStroke = Instance.new("UIStroke", MainFrame)
-MainStroke.Thickness = 2
-MainStroke.Color = Color3.fromRGB(70, 70, 90)
-
-local Title = Instance.new("TextLabel")
-Title.Parent = MainFrame
-Title.BackgroundTransparency = 1
-Title.Size = UDim2.new(1, 0, 0, 30) 
-Title.Position = UDim2.fromOffset(0, 5)
-Title.Font = Enum.Font.GothamBold
-Title.Text = "orochimaru hub"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 15
-Title.TextXAlignment = Enum.TextXAlignment.Center 
-
-local MinimizeBtn = Instance.new("TextButton")
-MinimizeBtn.Parent = MainFrame
-MinimizeBtn.BackgroundColor3 = Color3.fromRGB(38, 38, 48)
-MinimizeBtn.Position = UDim2.new(1, -28, 0, 8)
-MinimizeBtn.Size = UDim2.fromOffset(20, 20)
-MinimizeBtn.Font = Enum.Font.GothamBold
-MinimizeBtn.Text = "-"
-MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinimizeBtn.TextSize = 14
-Instance.new("UICorner", MinimizeBtn).CornerRadius = UDim.new(0, 4)
-
-MinimizeBtn.MouseButton1Click:Connect(function()
-	MainFrame.Visible = false
-	OpenBtn.Visible = true
-end)
-
-OpenBtn.MouseButton1Click:Connect(function()
-	MainFrame.Visible = true
-	OpenBtn.Visible = false
-end)
-
-local TabContainer = Instance.new("Frame")
-TabContainer.Parent = MainFrame
-TabContainer.BackgroundTransparency = 1
-TabContainer.Position = UDim2.fromOffset(12, 40)
-TabContainer.Size = UDim2.new(1, -24, 0, 28)
-
-local FarmTabBtn = Instance.new("TextButton")
-FarmTabBtn.Parent = TabContainer
-FarmTabBtn.BackgroundColor3 = Color3.fromRGB(55, 170, 85)
-FarmTabBtn.Size = UDim2.new(0.32, 0, 1, 0)
-FarmTabBtn.Font = Enum.Font.GothamBold
-FarmTabBtn.Text = "FARM"
-FarmTabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-FarmTabBtn.TextSize = 11
-Instance.new("UICorner", FarmTabBtn).CornerRadius = UDim.new(0, 6)
-
-local TrollTabBtn = Instance.new("TextButton")
-TrollTabBtn.Parent = TabContainer
-TrollTabBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-TrollTabBtn.Position = UDim2.new(0.34, 0, 0, 0)
-TrollTabBtn.Size = UDim2.new(0.32, 0, 1, 0)
-TrollTabBtn.Font = Enum.Font.GothamBold
-TrollTabBtn.Text = "TROLL"
-TrollTabBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
-TrollTabBtn.TextSize = 11
-Instance.new("UICorner", TrollTabBtn).CornerRadius = UDim.new(0, 6)
-
-local MiscTabBtn = Instance.new("TextButton")
-MiscTabBtn.Parent = TabContainer
-MiscTabBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-MiscTabBtn.Position = UDim2.new(0.68, 0, 0, 0)
-MiscTabBtn.Size = UDim2.new(0.32, 0, 1, 0)
-MiscTabBtn.Font = Enum.Font.GothamBold
-MiscTabBtn.Text = "MISC"
-MiscTabBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
-MiscTabBtn.TextSize = 11
-Instance.new("UICorner", MiscTabBtn).CornerRadius = UDim.new(0, 6)
-
-local FarmPage = Instance.new("Frame")
-FarmPage.Parent = MainFrame
-FarmPage.BackgroundTransparency = 1
-FarmPage.Position = UDim2.fromOffset(12, 75)
-FarmPage.Size = UDim2.new(1, -24, 1, -95)
-FarmPage.Visible = true
-
-local TrollPage = Instance.new("Frame")
-TrollPage.Parent = MainFrame
-TrollPage.BackgroundTransparency = 1
-TrollPage.Position = UDim2.fromOffset(12, 75)
-TrollPage.Size = UDim2.new(1, -24, 1, -95)
-TrollPage.Visible = false
-
-local MiscPage = Instance.new("Frame")
-MiscPage.Parent = MainFrame
-MiscPage.BackgroundTransparency = 1
-MiscPage.Position = UDim2.fromOffset(12, 75)
-MiscPage.Size = UDim2.new(1, -24, 1, -95)
-MiscPage.Visible = false
-
-local function SwitchTab(tabName)
-	FarmPage.Visible = (tabName == "FARM")
-	TrollPage.Visible = (tabName == "TROLL")
-	MiscPage.Visible = (tabName == "MISC")
-	
-	FarmTabBtn.BackgroundColor3 = (tabName == "FARM") and Color3.fromRGB(55, 170, 85) or Color3.fromRGB(45, 45, 55)
-	FarmTabBtn.TextColor3 = (tabName == "FARM") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
-	
-	TrollTabBtn.BackgroundColor3 = (tabName == "TROLL") and Color3.fromRGB(170, 55, 55) or Color3.fromRGB(45, 45, 55)
-	TrollTabBtn.TextColor3 = (tabName == "TROLL") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
-	
-	MiscTabBtn.BackgroundColor3 = (tabName == "MISC") and Color3.fromRGB(55, 85, 170) or Color3.fromRGB(45, 45, 55)
-	MiscTabBtn.TextColor3 = (tabName == "MISC") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
-end
-
-FarmTabBtn.MouseButton1Click:Connect(function() SwitchTab("FARM") end)
-TrollTabBtn.MouseButton1Click:Connect(function() SwitchTab("TROLL") end)
-MiscTabBtn.MouseButton1Click:Connect(function() SwitchTab("MISC") end)
-
-local MoneyLabel = Instance.new("TextLabel")
-MoneyLabel.Parent = FarmPage
-MoneyLabel.BackgroundTransparency = 1
-MoneyLabel.Size = UDim2.new(1, 0, 0, 20)
-MoneyLabel.Font = Enum.Font.GothamBold
-MoneyLabel.Text = "Money: ..."
-MoneyLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-MoneyLabel.TextSize = 14
-MoneyLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-task.spawn(function()
-	while ScreenGui.Parent do
-		local money = LocalPlayer:FindFirstChild("Money")
-		if money then
-			MoneyLabel.Text = "Money: " .. tostring(money.Value)
-		else
-			MoneyLabel.Text = "Money: ..."
-		end
-		task.wait(0.2)
-	end
-end)
-
-local ToggleFarmBtn = Instance.new("TextButton")
-ToggleFarmBtn.Parent = FarmPage
-ToggleFarmBtn.BackgroundColor3 = Color3.fromRGB(170, 55, 55)
-ToggleFarmBtn.Position = UDim2.fromOffset(0, 30)
-ToggleFarmBtn.Size = UDim2.new(1, 0, 0, 28)
-ToggleFarmBtn.Font = Enum.Font.GothamBold
-ToggleFarmBtn.Text = "AUTO FARM: OFF"
-ToggleFarmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleFarmBtn.TextSize = 13
-Instance.new("UICorner", ToggleFarmBtn).CornerRadius = UDim.new(0, 6)
-
-local function executeFarmScript()
-	pcall(function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/nenbreaklimit/Someshit/refs/heads/main/Rintamahigh"))()
-	end)
-end
-
-ToggleFarmBtn.MouseButton1Click:Connect(function()
-	getgenv().AutoFarmDelivery = not getgenv().AutoFarmDelivery
-	if getgenv().AutoFarmDelivery then
-		ToggleFarmBtn.Text = "AUTO FARM: ON"
-		ToggleFarmBtn.BackgroundColor3 = Color3.fromRGB(55, 170, 85)
-		task.spawn(executeFarmScript)
-	else
-		ToggleFarmBtn.Text = "AUTO FARM: OFF"
-		ToggleFarmBtn.BackgroundColor3 = Color3.fromRGB(170, 55, 55)
-	end
-end)
-
-LocalPlayer.CharacterAdded:Connect(function()
-	task.wait(1.5)
-	if getgenv().AutoFarmDelivery then
-		task.spawn(executeFarmScript)
-	end
-end)
-
---------------------------------------------------
---// TROLL PAGE (CẬP NHẬT GIAO DIỆN)
---------------------------------------------------
-local TargetBox = Instance.new("TextBox")
-TargetBox.Parent = TrollPage
-TargetBox.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
-TargetBox.Position = UDim2.fromOffset(0, 0) 
-TargetBox.Size = UDim2.new(1, 0, 0, 28)
-TargetBox.Font = Enum.Font.Gotham
-TargetBox.PlaceholderText = "Enter player name..."
-TargetBox.Text = ""
-TargetBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-TargetBox.TextSize = 12
-Instance.new("UICorner", TargetBox).CornerRadius = UDim.new(0, 6)
-
-local TargetBoxStroke = Instance.new("UIStroke", TargetBox)
-TargetBoxStroke.Thickness = 1
-TargetBoxStroke.Color = Color3.fromRGB(70, 70, 90)
-
--- [RAGDOLL TARGET BUTTON]
-local ToggleRagdollTargetBtn = Instance.new("TextButton")
-ToggleRagdollTargetBtn.Parent = TrollPage
-ToggleRagdollTargetBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-ToggleRagdollTargetBtn.Position = UDim2.fromOffset(0, 34) 
-ToggleRagdollTargetBtn.Size = UDim2.new(1, 0, 0, 28)
-ToggleRagdollTargetBtn.Font = Enum.Font.GothamBold
-ToggleRagdollTargetBtn.Text = "RAGDOLL TARGET"
-ToggleRagdollTargetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleRagdollTargetBtn.TextSize = 13
-Instance.new("UICorner", ToggleRagdollTargetBtn).CornerRadius = UDim.new(0, 6)
-
--- [RAGDOLL ALL BUTTON] (Đã đổi thành nút Bật/Tắt)
-local RagdollAllBtn = Instance.new("TextButton")
-RagdollAllBtn.Parent = TrollPage
-RagdollAllBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-RagdollAllBtn.Position = UDim2.fromOffset(0, 68) 
-RagdollAllBtn.Size = UDim2.new(1, 0, 0, 28)
-RagdollAllBtn.Font = Enum.Font.GothamBold
-RagdollAllBtn.Text = "RAGDOLL ALL: OFF"
-RagdollAllBtn.TextColor3 = Color3.fromRGB(255, 150, 50) 
-RagdollAllBtn.TextSize = 13
-Instance.new("UICorner", RagdollAllBtn).CornerRadius = UDim.new(0, 6)
-
--- [SPAM NOISE BUTTON]
-local ToggleSpamNoiseBtn = Instance.new("TextButton")
-ToggleSpamNoiseBtn.Parent = TrollPage
-ToggleSpamNoiseBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-ToggleSpamNoiseBtn.Position = UDim2.fromOffset(0, 102) 
-ToggleSpamNoiseBtn.Size = UDim2.new(1, 0, 0, 28)
-ToggleSpamNoiseBtn.Font = Enum.Font.GothamBold
-ToggleSpamNoiseBtn.Text = "SPAM NOISE: OFF"
-ToggleSpamNoiseBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-ToggleSpamNoiseBtn.TextSize = 13
-Instance.new("UICorner", ToggleSpamNoiseBtn).CornerRadius = UDim.new(0, 6)
-
-local function GetPlayerFromString(str)
-	if not str or str == "" then return nil end
-	str = string.lower(str)
-	for _, player in ipairs(Players:GetPlayers()) do
-		if string.find(string.lower(player.Name), str) or string.find(string.lower(player.DisplayName), str) then
-			return player
-		end
-	end
-	return nil
-end
-
--- [RAGDOLL TARGET FUNCTION - ANTI-TELEPORT (RETURN TO OLD POSITION)]
-ToggleRagdollTargetBtn.MouseButton1Click:Connect(function()
-	local targetPlayer = GetPlayerFromString(TargetBox.Text)
-    
-	if not targetPlayer then
-		TargetBox.Text = "Not found!"
-		task.wait(1)
-		TargetBox.Text = ""
-		return
-	end
-    
-	TargetBox.Text = targetPlayer.Name
-
-	TweenService:Create(ToggleRagdollTargetBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
-	task.wait(0.1)
-	TweenService:Create(ToggleRagdollTargetBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
-
-	if targetPlayer.Character then
-		local character = LocalPlayer.Character
-		local myHRP = character and character:FindFirstChild("HumanoidRootPart")
-		
-		if myHRP then
-			-- 1. Lưu lại tọa độ hiện tại
-			local originalCFrame = myHRP.CFrame
-			
-			-- 2. Tạm thời khóa cứng nhân vật để chống bị server kéo đi
-			myHRP.Anchored = true
-
-			-- 3. Bắn sự kiện tấn công (RedEvent)
-			pcall(function()
-				local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
-				local args = {
-					{
-						["\194\152"] = {
-							soundAsset,
-							{
-								ParentFolder = soundAsset.Parent,
-								RollOffMode = Enum.RollOffMode.Inverse,
-								Looped = false,
-								MinDistance = 5,
-								MaxDistance = 50,
-								Name = "",
-								Volume = 0.5,
-								RandomizePlaybackSpeed = true,
-								PlayOnRemove = true
-							}
-						},
-						["\194\169"] = {
-							targetPlayer.Character,
-							false
-						}
-					},
-					{}
-				}
-				ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
-			end)
-
-			-- 4. Ép vị trí liên tục trong khoảng 0.5s để vô hiệu hóa mọi force kéo đi
-			task.spawn(function()
-				for i = 1, 10 do
-					task.wait(0.05) 
-					if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-						LocalPlayer.Character.HumanoidRootPart.CFrame = originalCFrame
-					end
-				end
-				
-				-- 5. Đảm bảo mọi thứ xong xuôi thì mở khóa di chuyển lại bình thường
-				if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-					LocalPlayer.Character.HumanoidRootPart.Anchored = false
-					LocalPlayer.Character.HumanoidRootPart.CFrame = originalCFrame
-				end
-			end)
-		end
-	end
-end)
-
--- [RAGDOLL ALL FUNCTION - BẬT/TẮT, GIỮ VỊ TRÍ, LOOP 0.5s]
-local isRagdollingAll = false
-
-RagdollAllBtn.MouseButton1Click:Connect(function()
-	isRagdollingAll = not isRagdollingAll -- Đảo ngược trạng thái Bật/Tắt
-
-	-- Hiệu ứng khi bấm nút
-	TweenService:Create(RagdollAllBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
-	task.wait(0.1)
-	TweenService:Create(RagdollAllBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
-
-	if isRagdollingAll then
-		-- Trạng thái BẬT
-		RagdollAllBtn.Text = "RAGDOLL ALL: ON"
-		RagdollAllBtn.TextColor3 = Color3.fromRGB(100, 255, 100) -- Đổi sang màu xanh lá
-
-		task.spawn(function()
-			local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
-			
-			while isRagdollingAll do
-				-- Khóa vị trí bản thân liên tục trong vòng lặp để tránh bị game ép dịch chuyển
-				if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-					LocalPlayer.Character.HumanoidRootPart.Anchored = true
-				end
-				
-				local allPlayers = Players:GetPlayers()
-				
-				for _, player in ipairs(allPlayers) do
-					-- Nếu người dùng tắt giữa chừng, thoát vòng lặp ngay lập tức
-					if not isRagdollingAll then break end
-					
-					if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") then
-						pcall(function()
-							local args = {
-								{
-									["\194\152"] = {
-										soundAsset,
-										{
-											ParentFolder = soundAsset.Parent,
-											RollOffMode = Enum.RollOffMode.Inverse,
-											Looped = false,
-											MinDistance = 5000,
-											MaxDistance = 5000,
-											Name = "",
-											Volume = 0.5,
-											RandomizePlaybackSpeed = true,
-											PlayOnRemove = true
-										}
-									},
-									["\194\169"] = {
-										player.Character,
-										false
-									}
-								},
-								{}
-							}
-							ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
-						end)
-						
-						-- Tốc độ thực thi và cách nhau mỗi lượt đổi người là 0.5 giây
-						task.wait(0.5)
-					end
-				end
-				-- Nghỉ 0.1s sau khi đã quét hết danh sách để tránh Crash nếu server chỉ có 1 mình bạn
-				task.wait(0.1) 
-			end
-
-			-- Mở khóa di chuyển khi vòng lặp hoàn toàn kết thúc
-			if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-				LocalPlayer.Character.HumanoidRootPart.Anchored = false
-			end
-		end)
-	else
-		-- Trạng thái TẮT
-		RagdollAllBtn.Text = "RAGDOLL ALL: OFF"
-		RagdollAllBtn.TextColor3 = Color3.fromRGB(255, 150, 50) -- Trả về màu cam mặc định
-		
-		-- Mở khóa di chuyển tức thời khi tắt nút
-		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-			LocalPlayer.Character.HumanoidRootPart.Anchored = false
-		end
-	end
-end)
-
--- [SPAM NOISE LOOP]
-local spamNoiseTask = nil
-
-ToggleSpamNoiseBtn.MouseButton1Click:Connect(function()
-	getgenv().SpamNoiseToggled = not getgenv().SpamNoiseToggled
-	
-	if getgenv().SpamNoiseToggled then
-		ToggleSpamNoiseBtn.Text = "SPAM NOISE: ON"
-		ToggleSpamNoiseBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
-		TweenService:Create(ToggleSpamNoiseBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(50, 70, 50)}):Play()
-		
-		-- Dọn dẹp luồng cũ nếu có
-		if spamNoiseTask then
-			task.cancel(spamNoiseTask)
-		end
-		
-		spamNoiseTask = task.spawn(function()
-			local RedEvent = ReplicatedStorage:WaitForChild("RedEvent")
-			local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
-			local parentFolder = soundAsset.Parent
-
-			while getgenv().SpamNoiseToggled do
-				for _, player in ipairs(Players:GetPlayers()) do
-					if player ~= Players.LocalPlayer and player.Character then
-						pcall(function()
-							local args = {
-								{
-									["\194\152"] = {
-										soundAsset,
-										{
-											ParentFolder = parentFolder,
-											RollOffMode = Enum.RollOffMode.Inverse,
-											Looped = false,
-											MinDistance = 5000,
-											MaxDistance = 5000,
-											Name = "",
-											Volume = 0.5,
-											RandomizePlaybackSpeed = true,
-											PlayOnRemove = true
-										}
-									},
-									["\194\169"] = {
-										player.Character,
-										false
-									}
-								},
-								{}
-							}
-							-- Bắn sự kiện spam âm thanh
-							RedEvent:FireServer(unpack(args))
-						end)
-					end
-				end
-				
-				-- Đã sửa: Giảm thời gian chờ xuống mức siêu tốc (0.05 giây)
-				task.wait(0.05) 
-			end
-		end)
-	else
-		ToggleSpamNoiseBtn.Text = "SPAM NOISE: OFF"
-		ToggleSpamNoiseBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-		TweenService:Create(ToggleSpamNoiseBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
-		
-		-- Tắt ngay lập tức khi bấm OFF
-		if spamNoiseTask then
-			task.cancel(spamNoiseTask)
-			spamNoiseTask = nil
-		end
-	end
-end)
-
-local SpectateFrame = Instance.new("Frame")
-SpectateFrame.Parent = MiscPage
-SpectateFrame.BackgroundTransparency = 1
-SpectateFrame.Size = UDim2.new(1, 0, 0, 28)
-
-local PrevBtn = Instance.new("TextButton")
-PrevBtn.Parent = SpectateFrame
-PrevBtn.BackgroundColor3 = Color3.fromRGB(38, 38, 48)
-PrevBtn.Size = UDim2.new(0, 28, 1, 0)
-PrevBtn.Font = Enum.Font.GothamBold
-PrevBtn.Text = "<"
-PrevBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-PrevBtn.TextSize = 12
-Instance.new("UICorner", PrevBtn).CornerRadius = UDim.new(0, 6)
-
-local NextBtn = Instance.new("TextButton")
-NextBtn.Parent = SpectateFrame
-NextBtn.BackgroundColor3 = Color3.fromRGB(38, 38, 48)
-NextBtn.Position = UDim2.new(1, -28, 0, 0)
-NextBtn.Size = UDim2.new(0, 28, 1, 0)
-NextBtn.Font = Enum.Font.GothamBold
-NextBtn.Text = ">"
-NextBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-NextBtn.TextSize = 12
-Instance.new("UICorner", NextBtn).CornerRadius = UDim.new(0, 6)
-
-local SpectateName = Instance.new("TextLabel")
-SpectateName.Parent = SpectateFrame
-SpectateName.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
-SpectateName.Position = UDim2.new(0, 33, 0, 0)
-SpectateName.Size = UDim2.new(1, -66, 1, 0)
-SpectateName.Font = Enum.Font.Gotham
-SpectateName.Text = "No Players"
-SpectateName.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpectateName.TextSize = 12
-Instance.new("UICorner", SpectateName).CornerRadius = UDim.new(0, 6)
-
-local ToggleSpectateBtn = Instance.new("TextButton")
-ToggleSpectateBtn.Parent = MiscPage
-ToggleSpectateBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-ToggleSpectateBtn.Position = UDim2.fromOffset(0, 34)
-ToggleSpectateBtn.Size = UDim2.new(1, 0, 0, 28)
-ToggleSpectateBtn.Font = Enum.Font.GothamBold
-ToggleSpectateBtn.Text = "SPECTATE: OFF"
-ToggleSpectateBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-ToggleSpectateBtn.TextSize = 13
-Instance.new("UICorner", ToggleSpectateBtn).CornerRadius = UDim.new(0, 6)
-
-local TeleportBtn = Instance.new("TextButton")
-TeleportBtn.Parent = MiscPage
-TeleportBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-TeleportBtn.Position = UDim2.fromOffset(0, 68)
-TeleportBtn.Size = UDim2.new(1, 0, 0, 28)
-TeleportBtn.Font = Enum.Font.GothamBold
-TeleportBtn.Text = "TELEPORT TO PLAYER"
-TeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-TeleportBtn.TextSize = 13
-Instance.new("UICorner", TeleportBtn).CornerRadius = UDim.new(0, 6)
-
-local Spectating = false
-local SpectateIndex = 1
-local TargetSpectatePlayer = nil
-
-local function GetSpectateTargets()
-	local targets = {}
-	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= LocalPlayer then
-			table.insert(targets, p)
-		end
-	end
-	return targets
-end
-
-local function UpdateSpectate()
-	local targets = GetSpectateTargets()
-	if #targets == 0 then
-		SpectateName.Text = "No Players"
-		TargetSpectatePlayer = nil
-		if Spectating and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-			workspace.CurrentCamera.CameraSubject = LocalPlayer.Character.Humanoid
-		end
-		return
-	end
-
-	if SpectateIndex > #targets then SpectateIndex = 1 end
-	if SpectateIndex < 1 then SpectateIndex = #targets end
-
-	TargetSpectatePlayer = targets[SpectateIndex]
-	SpectateName.Text = TargetSpectatePlayer.Name
-
-	if Spectating and TargetSpectatePlayer.Character and TargetSpectatePlayer.Character:FindFirstChild("Humanoid") then
-		workspace.CurrentCamera.CameraSubject = TargetSpectatePlayer.Character.Humanoid
-	end
-end
-
-PrevBtn.MouseButton1Click:Connect(function()
-	SpectateIndex = SpectateIndex - 1
-	UpdateSpectate()
-end)
-
-NextBtn.MouseButton1Click:Connect(function()
-	SpectateIndex = SpectateIndex + 1
-	UpdateSpectate()
-end)
-
-ToggleSpectateBtn.MouseButton1Click:Connect(function()
-	Spectating = not Spectating
-	if Spectating then
-		ToggleSpectateBtn.Text = "SPECTATE: ON"
-		ToggleSpectateBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
-		TweenService:Create(ToggleSpectateBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(50, 70, 50)}):Play()
-		UpdateSpectate()
-	else
-		ToggleSpectateBtn.Text = "SPECTATE: OFF"
-		ToggleSpectateBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-		TweenService:Create(ToggleSpectateBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
-		TargetSpectatePlayer = nil
-		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-			workspace.CurrentCamera.CameraSubject = LocalPlayer.Character.Humanoid
-		end
-	end
-end)
-
-TeleportBtn.MouseButton1Click:Connect(function()
-	if TargetSpectatePlayer and TargetSpectatePlayer.Character and TargetSpectatePlayer.Character:FindFirstChild("HumanoidRootPart") then
-		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-			TweenService:Create(TeleportBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
-			task.wait(0.1)
-			TweenService:Create(TeleportBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
-			
-			LocalPlayer.Character.HumanoidRootPart.CFrame = TargetSpectatePlayer.Character.HumanoidRootPart.CFrame
-		end
-	end
-end)
-
-task.spawn(function()
-	while ScreenGui.Parent do
-		task.wait(0.2)
-		if Spectating then
-			if TargetSpectatePlayer and TargetSpectatePlayer.Parent == Players then
-				if TargetSpectatePlayer.Character and TargetSpectatePlayer.Character:FindFirstChild("Humanoid") then
-					if workspace.CurrentCamera.CameraSubject ~= TargetSpectatePlayer.Character.Humanoid then
-						workspace.CurrentCamera.CameraSubject = TargetSpectatePlayer.Character.Humanoid
-					end
-				end
-			else
-				UpdateSpectate()
-			end
-		end
-	end
-end)
-
-local CreditLabel = Instance.new("TextLabel")
-CreditLabel.Parent = MainFrame
-CreditLabel.BackgroundTransparency = 1
-CreditLabel.Position = UDim2.new(0, 0, 1, -20)
-CreditLabel.Size = UDim2.new(1, 0, 0, 15)
-CreditLabel.Font = Enum.Font.Gotham
-CreditLabel.Text = "made by orochimaru"
-CreditLabel.TextColor3 = Color3.fromRGB(130, 130, 150)
-CreditLabel.TextSize = 10
