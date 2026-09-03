@@ -1,5 +1,5 @@
 --==================================================
--- AUTO FARM DELIVERY - FIXED & OPTIMIZED
+-- AUTO FARM DELIVERY - STATE MACHINE & ANTI-DESYNC
 --==================================================
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -8,24 +8,20 @@ local VirtualUser = game:GetService("VirtualUser")
 
 local player = Players.LocalPlayer
 
--- Dừng các phiên bản script cũ nếu đang chạy dở
 getgenv().AutoFarmDelivery = false
-task.wait(0.1)
+task.wait(0.2)
 getgenv().AutoFarmDelivery = true
 
--- Cấu hình
 local Config = {
-    StartPos = CFrame.new(-152.8, -21, 668.1),
+    StartPos = CFrame.new(-152.8, -22, 668.1),
     DeliveryOffset = CFrame.new(0, -10, 0),
-    QuestName = "Fujiwara Bunta",
-    WaitDelay = 0.15 -- Giảm thời gian chờ để farm nhanh hơn
+    QuestName = "Fujiwara Bunta"
 }
 
--- Thông báo kích hoạt thành công
 pcall(function()
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "Auto Farm",
-        Text = "Đã kích hoạt tự động Farm!",
+        Text = "Đã tối ưu: Tự động dò lỗi và tiếp tục!",
         Duration = 3
     })
 end)
@@ -45,7 +41,7 @@ player.Idled:Connect(function()
 end)
 
 --==================================================
--- UTILITIES
+-- UTILITIES & HOVER LOCK
 --==================================================
 local function getCharacterData()
     local char = player.Character or player.CharacterAdded:Wait()
@@ -56,23 +52,14 @@ end
 
 local function teleportTo(targetCFrame)
     local _, root = getCharacterData()
-    if root then
-        root.CFrame = targetCFrame
-    end
+    if root then root.CFrame = targetCFrame end
 end
 
---==================================================
--- KHÔNG BAO GIỜ RỚT (HOVER LOCK)
---==================================================
 local bodyVel
-
 local function applyFloat()
     local _, root, hum = getCharacterData()
     if not root then return end
-
-    if hum then
-        hum.PlatformStand = true -- Triệt tiêu hiệu ứng trọng lực tác động lên nhân vật
-    end
+    if hum then hum.PlatformStand = true end
 
     if not root:FindFirstChild("FarmBodyVelocity") then
         bodyVel = Instance.new("BodyVelocity")
@@ -113,6 +100,13 @@ local function takeQuest()
     end)
 end
 
+local function completeDelivery(npcName)
+    pcall(function()
+        local args = { { ["<"] = npcName }, {} }
+        ReplicatedStorage:WaitForChild("RedEvent", 3):FireServer(unpack(args))
+    end)
+end
+
 local function findDeliveryNPC()
     local foundNpc, foundRoot = nil, nil
     pcall(function()
@@ -130,44 +124,30 @@ local function findDeliveryNPC()
     return foundNpc, foundRoot
 end
 
-local function completeDelivery(npcName)
-    pcall(function()
-        local args = { { ["<"] = npcName }, {} }
-        ReplicatedStorage:WaitForChild("RedEvent", 3):FireServer(unpack(args))
-    end)
-end
-
 --==================================================
--- MAIN LOOP (TỰ ĐỘNG CHẠY NGAY KHI EXECUTE)
+-- MAIN LOOP (TRẠNG THÁI TỰ ĐỘNG DÒ)
 --==================================================
 task.spawn(function()
     while getgenv().AutoFarmDelivery do
-        -- 1. Dịch chuyển về vị trí bắt đầu
-        teleportTo(Config.StartPos)
-        task.wait(Config.WaitDelay)
+        
+        -- 1. Quét xem trên map có NPC giao hàng (tức là đang có nhiệm vụ) hay không
+        local npc, root = findDeliveryNPC()
 
-        if not getgenv().AutoFarmDelivery then break end
-
-        -- 2. Nhận Nhiệm vụ
-        takeQuest()
-        task.wait(Config.WaitDelay)
-
-        -- 3. Quét tìm NPC giao hàng (tối đa 10 lần)
-        local npc, root
-        for i = 1, 10 do
-            if not getgenv().AutoFarmDelivery then break end
-            npc, root = findDeliveryNPC()
-            if npc and root then break end
-            task.wait(0.1)
-        end
-
-        -- 4. Dịch chuyển & Hoàn thành giao hàng
-        if npc and root and getgenv().AutoFarmDelivery then
+        if npc and root then
+            -- TRẠNG THÁI B: Đã có nhiệm vụ -> Tập trung đi giao
             teleportTo(root.CFrame * Config.DeliveryOffset)
-            task.wait(Config.WaitDelay)
+            task.wait(0.2) -- Chờ nhân vật load xong vị trí
+            
             completeDelivery(npc.Name)
+            task.wait(0.4) -- Chờ server xác nhận đã giao xong để xóa NPC đi
+        else
+            -- TRẠNG THÁI A: Chưa có nhiệm vụ -> Đi lấy nhiệm vụ
+            teleportTo(Config.StartPos)
+            task.wait(0.2) -- Chờ nhân vật về lại vị trí nhận
+            
+            takeQuest()
+            task.wait(0.6) -- [QUAN TRỌNG] Chờ server xử lý lệnh nhận và spawn NPC giao hàng ra map
         end
-
-        task.wait(Config.WaitDelay)
+        
     end
 end)
