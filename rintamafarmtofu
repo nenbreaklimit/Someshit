@@ -25,7 +25,7 @@ local Config = {
 pcall(function()
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "Auto Farm",
-        Text = "Đã kích hoạt tự động Farm!",
+        Text = "Farm Tofu Running!",
         Duration = 3
     })
 end)
