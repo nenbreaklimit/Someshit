@@ -1,6 +1,8 @@
--- Tự động dọn dẹp các luồng cũ nếu bạn chạy lại script nhiều lần
-if getgenv().AutoFarmLoop then task.cancel(getgenv().AutoFarmLoop) end
-if getgenv().floatConnection then getgenv().floatConnection:Disconnect() end
+-- Dọn dẹp script cũ nếu bạn bấm Execute nhiều lần
+if getgenv().AutoFarmDelivery ~= nil then
+    getgenv().AutoFarmDelivery = false
+    task.wait(0.5) -- Đợi luồng cũ dừng hẳn
+end
 
 getgenv().AutoFarmDelivery = true
 
@@ -11,24 +13,25 @@ local VirtualUser = game:GetService("VirtualUser")
 
 local player = Players.LocalPlayer
 
-local Config = {
-    StartPos = CFrame.new(-152.8, -21, 668.1),
-    DeliveryOffset = CFrame.new(0, -10, 0),
-    QuestName = "Fujiwara Bunta",
-    WaitDelay = 0.2
-}
-
---==================================================
--- THÔNG BÁO VÀ CHỐNG AFK (ANTI-AFK)
---==================================================
+-- Thông báo kích hoạt
 pcall(function()
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Auto Farm Delivery",
-        Text = "Script đã chạy thành công!",
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "Auto Farm",
+        Text = "Script đang khởi động thành công!",
         Duration = 3
     })
 end)
 
+local Config = {
+    StartPos = CFrame.new(-152.8, -21, 668.1),
+    DeliveryOffset = CFrame.new(0, -10, 0),
+    QuestName = "Fujiwara Bunta",
+    WaitDelay = 0.5 -- Tăng nhẹ delay để tránh bị server nghi ngờ spam/kick
+}
+
+--==================================================
+-- CHỐNG AFK KICK
+--==================================================
 pcall(function()
     for _, conn in pairs(getconnections(player.Idled)) do
         conn:Disable()
@@ -41,12 +44,12 @@ player.Idled:Connect(function()
 end)
 
 --==================================================
--- UTILITIES (HÀM BỔ TRỢ)
+-- HÀM BỔ TRỢ (UTILITIES)
 --==================================================
 local function getCharacterData()
     local char = player.Character or player.CharacterAdded:Wait()
     local root = char:FindFirstChild("HumanoidRootPart")
-    local hum = char:FindFirstChild("Humanoid")
+    local hum = char:FindFirstChildOfClass("Humanoid")
     return char, root, hum
 end
 
@@ -60,43 +63,34 @@ local function teleportTo(targetCFrame)
 end
 
 --==================================================
--- KHÔNG BAO GIỜ RỚT (HOVER LOCK TỐI ƯU)
+-- HỆ THỐNG ĐỨNG YÊN TRÊN KHÔNG (HOVER LOCK)
 --==================================================
-local bodyVel
-
 local function applyFloat()
     local _, root, hum = getCharacterData()
     if not root then return end
 
     if hum then
-        Script của bạn bị lỗi ở một vài chỗ khiến nó không thể chạy được. Dưới đây là các lỗi cụ thể đã được khắc phục:
+        hum.PlatformStand = true 
+    end
 
-1. **Lỗi cú pháp ở dòng 1:** Bạn dán nhầm chữ `Chủ đề mới, Local` vào phần khai báo biến `Players`.
-2. **Thiếu hàm `getCharacterData()`:** Script gọi hàm này ở phần "HOVER LOCK" nhưng lại chưa định nghĩa nó ở trên, dẫn đến lỗi `attempt to call a nil value`.
-3. **Gọi hàm `startFly()` không tồn tại:** Trong vòng lặp chính (MAIN LOOP), bạn gọi `startFly()` trong khi script không có hàm này (thực chất logic bay đã được xử lý ngầm qua `RunService.Heartbeat` ở phía trên).
+    local bodyVel = root:FindFirstChild("FarmBodyVelocity")
+    if not bodyVel then
+        bodyVel = Instance.new("BodyVelocity")
+        bodyVel.Name = "FarmBodyVelocity"
+        bodyVel.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+        bodyVel.Velocity = Vector3.zero
+        bodyVel.Parent = root
+    end
+end
 
-Dưới đây là phiên bản đã được sửa lỗi và tối ưu hóa để có thể chạy mượt mà:
+if getgenv().FarmFloatConnection then
+    getgenv().FarmFloatConnection:Disconnect()
+end
 
-```lua
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local VirtualUser = game:GetService("VirtualUser")
-
-local player = Players.LocalPlayer
-
---==================================================
--- EXECUTOR TOGGLE (Chạy 'false' để dừng script)
---==================================================
-getgenv().AutoFarmDelivery = true
-
--- Gửi thông báo khi script chạy thành công
-pcall(function()
-    game.StarterGui:SetCore("SendNotification", {
-        Title = "Auto Farm",
-        Text = "Script Executed Successfully!",
-        Duration = 3
-    })
-end)
-
-local
+getgenv().FarmFloatConnection = RunService.Heartbeat:Connect(function()
+    if not getgenv().AutoFarmDelivery then
+        -- Dọn dẹp trạng thái bay khi tắt script
+        local _, root, hum = getCharacterData()
+        if root then
+            local bv = root:FindFirstChild("FarmBodyVelocity")
+            if bv thenChào bạn, nếu script vẫn chưa chạy được sau khi gỡ bỏ các tính năng kiểm tra, nguyên nhân thường là do lỗi cú pháp hoặc code vẫn còn sót lại các tham chiếu đến phần đã bị xóa.
