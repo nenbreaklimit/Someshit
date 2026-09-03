@@ -1,0 +1,178 @@
+Local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
+
+local player = Players.LocalPlayer
+
+--==================================================
+-- EXECUTOR TOGGLE (Run as 'false' to stop)
+--==================================================
+getgenv().AutoFarmDelivery = true
+
+-- Send a notification so you know it injected
+pcall(function()
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "Auto Farm",
+        Text = "Script Executed Successfully!",
+        Duration = 3
+    })
+end)
+
+local Config = {
+    StartPos = CFrame.new(-152.8, -21, 668.1),
+    DeliveryOffset = CFrame.new(0, -10, 0),
+    QuestName = "Fujiwara Bunta",
+    WaitDelay = 0.3
+}
+
+--==================================================
+-- EXECUTOR ANTI-AFK
+--==================================================
+pcall(function()
+    -- Executor specific function to disable AFK kick
+    for _, conn in pairs(getconnections(player.Idled)) do
+        conn:Disable()
+    end
+end)
+
+-- Fallback for executors that don't support getconnections
+player.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+--==================================================
+-- UTILITIES
+--==================================================
+local function getRoot()
+    local char = player.Character or player.CharacterAdded:Wait()
+    local root = char:WaitForChild("HumanoidRootPart", 9e9)
+    return root
+end
+
+local function teleportTo(targetCFrame)
+    pcall(function()
+        local root = getRoot()
+        if root then
+            root.CFrame = targetCFrame
+        end
+    end)
+end
+
+--==================================================
+-- KHÔNG BAO GIỜ RỚT (HOVER LOCK)
+--==================================================
+local bodyVel
+
+local function applyFloat()
+    local _, root, hum = getCharacterData()
+    if not root then return end
+
+    if hum then
+        hum.PlatformStand = true -- Triệt tiêu hiệu ứng trọng lực tác động lên nhân vật
+    end
+
+    if not root:FindFirstChild("FarmBodyVelocity") then
+        bodyVel = Instance.new("BodyVelocity")
+        bodyVel.Name = "FarmBodyVelocity"
+        bodyVel.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+        bodyVel.Velocity = Vector3.zero
+        bodyVel.Parent = root
+    end
+end
+
+local floatConnection
+floatConnection = RunService.Heartbeat:Connect(function()
+    if not getgenv().AutoFarmDelivery then
+        if bodyVel then bodyVel:Destroy() end
+        local _, _, hum = getCharacterData()
+        if hum then hum.PlatformStand = false end
+        if floatConnection then floatConnection:Disconnect() end
+        return
+    end
+
+    pcall(function()
+        applyFloat()
+        local _, root = getCharacterData()
+        if root then
+            root.AssemblyLinearVelocity = Vector3.zero
+            root.AssemblyAngularVelocity = Vector3.zero
+        end
+    end)
+end)
+
+--
+--==================================================
+-- CORE LOGIC
+--==================================================
+local function takeQuest()
+    pcall(function()
+        local args = { { [";"] = Config.QuestName }, {} }
+        ReplicatedStorage:WaitForChild("RedEvent", 5):FireServer(unpack(args))
+    end)
+end
+
+local function findDeliveryNPC()
+    local foundNpc, foundRoot = nil, nil
+    pcall(function()
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("Model") and obj:FindFirstChild("DeliveryPulse", true) then
+                local root = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
+                if root then
+                    foundNpc = obj
+                    foundRoot = root
+                    break
+                end
+            end
+        end
+    end)
+    return foundNpc, foundRoot
+end
+
+local function completeDelivery(npcName)
+    pcall(function()
+        local args = { { ["<"] = npcName }, {} }
+        ReplicatedStorage:WaitForChild("RedEvent", 5):FireServer(unpack(args))
+    end)
+end
+
+--==================================================
+-- MAIN LOOP
+--==================================================
+task.spawn(function()
+    startFly()
+    
+    while getgenv().AutoFarmDelivery do
+        
+        -- 1. Go To Start
+        teleportTo(Config.StartPos)
+        task.wait(Config.WaitDelay)
+        
+        if not getgenv().AutoFarmDelivery then break end
+        
+        -- 2. Take Quest
+        takeQuest()
+        task.wait(Config.WaitDelay)
+        
+        -- 3. Find NPC (with attempt limit)
+        local npc, root
+        for i = 1, 15 do
+            if not getgenv().AutoFarmDelivery then break end
+            
+            npc, root = findDeliveryNPC()
+            if npc and root then break end
+            
+            task.wait(0.3)
+        end
+        
+        -- 4. Complete Quest
+        if npc and root and getgenv().AutoFarmDelivery then
+            teleportTo(root.CFrame * Config.DeliveryOffset)
+            task.wait(Config.WaitDelay)
+            completeDelivery(npc.Name)
+        end
+        
+        task.wait(Config.WaitDelay)
+    end
+end)
