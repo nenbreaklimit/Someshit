@@ -1,96 +1,163 @@
--- Dọn dẹp script cũ nếu bạn bấm Execute nhiều lần
-if getgenv().AutoFarmDelivery ~= nil then
-    getgenv().AutoFarmDelivery = false
-    task.wait(0.5) -- Đợi luồng cũ dừng hẳn
-end
-
-getgenv().AutoFarmDelivery = true
-
-local Players = game:GetService("Players")
+Local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local VirtualUser = game:GetService("VirtualUser")
 
 local player = Players.LocalPlayer
 
--- Thông báo kích hoạt
+--==================================================
+-- EXECUTOR TOGGLE (Run as 'false' to stop)
+--==================================================
+getgenv().AutoFarmDelivery = true
+
+-- Send a notification so you know it injected
 pcall(function()
-    game.StarterGui:SetCore("SendNotification", {
-        Title = "Auto Farm",
-        Text = "Script đang khởi động thành công!",
-        Duration = 3
-    })
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "Auto Farm",
+        Text = "Script Executed Successfully!",
+        Duration = 3
+    })
 end)
 
 local Config = {
-    StartPos = CFrame.new(-152.8, -21, 668.1),
-    DeliveryOffset = CFrame.new(0, -10, 0),
-    QuestName = "Fujiwara Bunta",
-    WaitDelay = 0.5 -- Tăng nhẹ delay để tránh bị server nghi ngờ spam/kick
+    StartPos = CFrame.new(-152.8, -21, 668.1),
+    DeliveryOffset = CFrame.new(0, -10, 0),
+    QuestName = "Fujiwara Bunta",
+    WaitDelay = 0.3
 }
 
 --==================================================
--- CHỐNG AFK KICK
+-- EXECUTOR ANTI-AFK
 --==================================================
 pcall(function()
-    for _, conn in pairs(getconnections(player.Idled)) do
-        conn:Disable()
-    end
+    -- Executor specific function to disable AFK kick
+    for _, conn in pairs(getconnections(player.Idled)) do
+        conn:Disable()
+    end
 end)
 
+-- Fallback for executors that don't support getconnections
 player.Idled:Connect(function()
-    VirtualUser:CaptureController()
-    VirtualUser:ClickButton2(Vector2.new())
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
 end)
 
 --==================================================
--- HÀM BỔ TRỢ (UTILITIES)
+-- UTILITIES
 --==================================================
-local function getCharacterData()
-    local char = player.Character or player.CharacterAdded:Wait()
-    local root = char:FindFirstChild("HumanoidRootPart")
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    return char, root, hum
+local function getRoot()
+    local char = player.Character or player.CharacterAdded:Wait()
+    local root = char:WaitForChild("HumanoidRootPart", 9e9)
+    return root
 end
 
 local function teleportTo(targetCFrame)
-    pcall(function()
-        local _, root = getCharacterData()
-        if root then
-            root.CFrame = targetCFrame
-        end
-    end)
+    pcall(function()
+        local root = getRoot()
+        if root then
+            root.CFrame = targetCFrame
+        end
+    end)
 end
 
 --==================================================
--- HỆ THỐNG ĐỨNG YÊN TRÊN KHÔNG (HOVER LOCK)
+-- STABILIZATION (FLYING)
 --==================================================
-local function applyFloat()
-    local _, root, hum = getCharacterData()
-    if not root then return end
+local flying = false
+local flyConnection
 
-    if hum then
-        hum.PlatformStand = true 
-    end
-
-    local bodyVel = root:FindFirstChild("FarmBodyVelocity")
-    if not bodyVel then
-        bodyVel = Instance.new("BodyVelocity")
-        bodyVel.Name = "FarmBodyVelocity"
-        bodyVel.MaxForce = Vector3.new(1e9, 1e9, 1e9)
-        bodyVel.Velocity = Vector3.zero
-        bodyVel.Parent = root
-    end
+local function startFly()
+    if flying then return end
+    flying = true
+    
+    flyConnection = RunService.Heartbeat:Connect(function()
+        -- Break connection if user toggles off
+        if not getgenv().AutoFarmDelivery then 
+            flying = false
+            if flyConnection then flyConnection:Disconnect() end
+            return 
+        end
+        
+        pcall(function()
+            local root = getRoot()
+            if root then
+                root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+            end
+        end)
+    end)
 end
 
-if getgenv().FarmFloatConnection then
-    getgenv().FarmFloatConnection:Disconnect()
+--==================================================
+-- CORE LOGIC
+--==================================================
+local function takeQuest()
+    pcall(function()
+        local args = { { [";"] = Config.QuestName }, {} }
+        ReplicatedStorage:WaitForChild("RedEvent", 5):FireServer(unpack(args))
+    end)
 end
 
-getgenv().FarmFloatConnection = RunService.Heartbeat:Connect(function()
-    if not getgenv().AutoFarmDelivery then
-        -- Dọn dẹp trạng thái bay khi tắt script
-        local _, root, hum = getCharacterData()
-        if root then
-            local bv = root:FindFirstChild("FarmBodyVelocity")
-            if bv thenChào bạn, nếu script vẫn chưa chạy được sau khi gỡ bỏ các tính năng kiểm tra, nguyên nhân thường là do lỗi cú pháp hoặc code vẫn còn sót lại các tham chiếu đến phần đã bị xóa.
+local function findDeliveryNPC()
+    local foundNpc, foundRoot = nil, nil
+    pcall(function()
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("Model") and obj:FindFirstChild("DeliveryPulse", true) then
+                local root = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
+                if root then
+                    foundNpc = obj
+                    foundRoot = root
+                    break
+                end
+            end
+        end
+    end)
+    return foundNpc, foundRoot
+end
+
+local function completeDelivery(npcName)
+    pcall(function()
+        local args = { { ["<"] = npcName }, {} }
+        ReplicatedStorage:WaitForChild("RedEvent", 5):FireServer(unpack(args))
+    end)
+end
+
+--==================================================
+-- MAIN LOOP
+--==================================================
+task.spawn(function()
+    startFly()
+    
+    while getgenv().AutoFarmDelivery do
+        
+        -- 1. Go To Start
+        teleportTo(Config.StartPos)
+        task.wait(Config.WaitDelay)
+        
+        if not getgenv().AutoFarmDelivery then break end
+        
+        -- 2. Take Quest
+        takeQuest()
+        task.wait(Config.WaitDelay)
+        
+        -- 3. Find NPC (with attempt limit)
+        local npc, root
+        for i = 1, 15 do
+            if not getgenv().AutoFarmDelivery then break end
+            
+            npc, root = findDeliveryNPC()
+            if npc and root then break end
+            
+            task.wait(0.3)
+        end
+        
+        -- 4. Complete Quest
+        if npc and root and getgenv().AutoFarmDelivery then
+            teleportTo(root.CFrame * Config.DeliveryOffset)
+            task.wait(Config.WaitDelay)
+            completeDelivery(npc.Name)
+        end
+        
+        task.wait(Config.WaitDelay)
+    end
+end) tôi cần sửa lại chỉ cần chạy script là nó sẽ farm chứ không cần bấm nút nữa, sửa tính năng bay thành đứng trên không không bao giờ rớt và tối ưu lại tất cả làm nó tốt hơn không bị lỗi và chạy mượt, nhanh
