@@ -18,7 +18,7 @@ local Config = {
     StartPos = CFrame.new(-152.8, -21, 668.1),
     DeliveryOffset = CFrame.new(0, -10, 0),
     QuestName = "Fujiwara Bunta",
-    WaitDelay = 0.5 -- Giảm thời gian chờ để farm nhanh hơn
+    WaitDelay = 0.1 -- Giảm thời gian chờ để farm nhanh hơn
 }
 
 -- Thông báo kích hoạt thành công
