@@ -420,7 +420,7 @@ Instance.new("UICorner", ToggleFarmBtn).CornerRadius = UDim.new(0, 6)
 
 local function executeFarmScript()
 	pcall(function()
-		loadstring(game:HttpGet("https://github.com/nenbreaklimit/Someshit/edit/main/Rintamahigh"))()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/nenbreaklimit/Someshit/refs/heads/main/Rintamahigh"))()
 	end)
 end
 
