@@ -154,7 +154,7 @@ task.spawn(function()
 
         -- 3. Quét tìm NPC giao hàng (tối đa 10 lần)
         local npc, root
-        for i = 1, 10 do
+        for i = 1, 20 do
             if not getgenv().AutoFarmDelivery then break end
             npc, root = findDeliveryNPC()
             if npc and root then break end
