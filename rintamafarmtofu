@@ -18,7 +18,7 @@ local Config = {
     StartPos = CFrame.new(-152.8, -21, 668.1),
     DeliveryOffset = CFrame.new(0, -10, 0),
     QuestName = "Fujiwara Bunta",
-    WaitDelay = 0.15 -- Giảm thời gian chờ để farm nhanh hơn
+    WaitDelay = 0.3 -- Giảm thời gian chờ để farm nhanh hơn
 }
 
 -- Thông báo kích hoạt thành công
@@ -158,7 +158,7 @@ task.spawn(function()
             if not getgenv().AutoFarmDelivery then break end
             npc, root = findDeliveryNPC()
             if npc and root then break end
-            task.wait(0.1)
+            task.wait(0.3)
         end
 
         -- 4. Dịch chuyển & Hoàn thành giao hàng
