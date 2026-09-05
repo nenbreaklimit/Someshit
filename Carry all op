@@ -9,10 +9,10 @@ local TextChatService = game:GetService("TextChatService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService") -- Thêm RunService cho Fly
+local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
-local camera = workspace.CurrentCamera -- Thêm Camera cho Fly
+local camera = workspace.CurrentCamera
 
 --------------------------------------------------
 --// 1. CC / MOD DETECTOR & STEALTH ESP
@@ -347,13 +347,12 @@ TrollPage.Position = UDim2.fromOffset(12, 75)
 TrollPage.Size = UDim2.new(1, -24, 1, -95)
 TrollPage.Visible = false
 
--- ĐÃ ĐỔI THÀNH SCROLLING FRAME
 local MiscPage = Instance.new("ScrollingFrame")
 MiscPage.Parent = MainFrame
 MiscPage.BackgroundTransparency = 1
 MiscPage.Position = UDim2.fromOffset(12, 75)
 MiscPage.Size = UDim2.new(1, -24, 1, -95)
-MiscPage.CanvasSize = UDim2.new(0, 0, 1.8, 0) -- Tăng chiều dài để cuộn
+MiscPage.CanvasSize = UDim2.new(0, 0, 1.8, 0) 
 MiscPage.ScrollBarThickness = 2
 MiscPage.BorderSizePixel = 0
 MiscPage.ScrollingDirection = Enum.ScrollingDirection.Y
@@ -361,7 +360,7 @@ MiscPage.Visible = false
 
 local MiscLayout = Instance.new("UIListLayout")
 MiscLayout.Parent = MiscPage
-MiscLayout.Padding = UDim.new(0, 6) -- Căn đều các nút cách nhau 6 pixel
+MiscLayout.Padding = UDim.new(0, 6) 
 MiscLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 MiscLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
@@ -654,7 +653,6 @@ end)
 --------------------------------------------------
 -- MISC PAGE LOGIC (SPECTATE, TELEPORT, FLY)
 --------------------------------------------------
--- (Xóa Position tĩnh đi để UIListLayout tự xếp)
 
 local SpectateFrame = Instance.new("Frame")
 SpectateFrame.Parent = MiscPage
@@ -820,9 +818,8 @@ FlyToggleBtn.TextSize = 13
 FlyToggleBtn.LayoutOrder = 4
 Instance.new("UICorner", FlyToggleBtn).CornerRadius = UDim.new(0, 6)
 
-local flySpeed = 40 -- Tốc độ mặc định chỉnh thành 20
+local flySpeed = 40 
 
--- Tạo một Frame chứa 2 nút < > và chữ hiển thị tốc độ
 local SpeedControlFrame = Instance.new("Frame")
 SpeedControlFrame.Parent = MiscPage
 SpeedControlFrame.Size = UDim2.new(1, 0, 0, 28)
@@ -862,7 +859,28 @@ SpeedLabel.TextSize = 12
 Instance.new("UICorner", SpeedLabel).CornerRadius = UDim.new(0, 6)
 
 local flyEnabled = false
-local flyConnection, bodyGyro, bodyVel
+local flyConnection
+
+local function stopFly()
+    if flyConnection then
+        flyConnection:Disconnect()
+        flyConnection = nil
+    end
+
+    local char = LocalPlayer.Character
+    if char then
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if root then
+            if root:FindFirstChild("FlyBodyGyro") then root.FlyBodyGyro:Destroy() end
+            if root:FindFirstChild("FlyBodyVelocity") then root.FlyBodyVelocity:Destroy() end
+        end
+        
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.PlatformStand = false
+        end
+    end
+end
 
 local function startFly()
     local char = LocalPlayer.Character
@@ -896,7 +914,7 @@ local function startFly()
                 FlyToggleBtn.Text = "FLY: OFF"
                 FlyToggleBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
             end
-            if flyConnection then flyConnection:Disconnect() end
+            stopFly()
             return
         end
 
@@ -931,7 +949,6 @@ local function startFly()
     end)
 end
 
-
 FlyToggleBtn.MouseButton1Click:Connect(function()
     flyEnabled = not flyEnabled
     if flyEnabled then
@@ -945,23 +962,19 @@ FlyToggleBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Chức năng giảm tốc độ
 DecreaseBtn.MouseButton1Click:Connect(function()
-    flySpeed = math.max(5, flySpeed - 5) -- Giảm 5, tối thiểu là 5
+    flySpeed = math.max(5, flySpeed - 5)
     SpeedLabel.Text = "Fly Speed: " .. flySpeed
     
-    -- Hiệu ứng nhấp nháy cho nút
     TweenService:Create(DecreaseBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
     task.wait(0.1)
     TweenService:Create(DecreaseBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(38, 38, 48)}):Play()
 end)
 
--- Chức năng tăng tốc độ
 IncreaseBtn.MouseButton1Click:Connect(function()
-    flySpeed = math.min(250, flySpeed + 5) -- Tăng 5, tối đa là 250
+    flySpeed = math.min(250, flySpeed + 5)
     SpeedLabel.Text = "Fly Speed: " .. flySpeed
     
-    -- Hiệu ứng nhấp nháy cho nút
     TweenService:Create(IncreaseBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
     task.wait(0.1)
     TweenService:Create(IncreaseBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(38, 38, 48)}):Play()
