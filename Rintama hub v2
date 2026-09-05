@@ -198,7 +198,7 @@ task.spawn(function()
     Players.PlayerAdded:Connect(function(p)
         task.spawn(ProcessPlayer, p)
     end)
-    print("⚡ [CC / MOD DETECTOR]: HỆ THỐNG ĐÃ KÍCH HOẠT (PURE COMMAND LEVEL)!")
+    print("DETECTOR")
 end)
 
 --------------------------------------------------
