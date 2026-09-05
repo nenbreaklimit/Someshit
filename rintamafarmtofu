@@ -15,7 +15,7 @@ getgenv().AutoFarmDelivery = true
 
 -- Cấu hình
 local Config = {
-    StartPos = CFrame.new(-152.8, -21, 668.1),
+    StartPos = CFrame.new(-152.8, -25, 668.1),
     DeliveryOffset = CFrame.new(0, -10, 0),
     QuestName = "Fujiwara Bunta",
     WaitDelay = 0.3 -- Giảm thời gian chờ để farm nhanh hơn
