@@ -936,7 +936,6 @@ local function startFly()
         bodyVel.velocity = moveDir * flySpeed
     end)
 
-
 FlyToggleBtn.MouseButton1Click:Connect(function()
     flyEnabled = not flyEnabled
     if flyEnabled then
