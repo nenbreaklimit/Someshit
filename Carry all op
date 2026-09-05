@@ -902,6 +902,7 @@ local function startFly()
         local currentCam = workspace.CurrentCamera
         local moveDir = Vector3.new(0, 0, 0)
 
+        -- 1. Hỗ trợ bàn phím PC (WASD + Space + Ctrl)
         if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + currentCam.CFrame.LookVector end
         if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - currentCam.CFrame.LookVector end
         if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + currentCam.CFrame.RightVector end
@@ -909,7 +910,17 @@ local function startFly()
         if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
         if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0, 1, 0) end
 
-        -- Chuẩn hóa Vector để bay không bị quá tốc độ khi nhấn chéo
+        -- 2. Hỗ trợ điện thoại (kéo nút di chuyển / thumbstick)
+        if moveDir.Magnitude == 0 and hum.MoveDirection.Magnitude > 0 then
+            moveDir = hum.MoveDirection
+        end
+
+        -- 3. Hỗ trợ nút Nhảy (Jump) trên điện thoại để bay lên cao
+        if hum.Jump then
+            moveDir = moveDir + Vector3.new(0, 1, 0)
+        end
+
+        -- Chuẩn hóa Vector để bay mượt và không bị quá tốc độ khi đi chéo
         if moveDir.Magnitude > 0 then
             moveDir = moveDir.Unit
         end
@@ -918,6 +929,7 @@ local function startFly()
         bodyVel.velocity = moveDir * flySpeed
     end)
 end
+
 
 local function stopFly()
     if flyConnection then flyConnection:Disconnect() end
