@@ -807,7 +807,7 @@ task.spawn(function()
 end)
 
 --------------------------------------------------
--- TÍNH NĂNG FLY (ĐÃ FIX LỖI DI CHUYỂN & SLIDER)
+-- TÍNH NĂNG FLY (ĐÃ FIX LỖI DI CHUYỂN & DÙNG NÚT < >)
 --------------------------------------------------
 local FlyToggleBtn = Instance.new("TextButton")
 FlyToggleBtn.Parent = MiscPage
@@ -820,36 +820,46 @@ FlyToggleBtn.TextSize = 13
 FlyToggleBtn.LayoutOrder = 4
 Instance.new("UICorner", FlyToggleBtn).CornerRadius = UDim.new(0, 6)
 
-local SliderFrame = Instance.new("Frame")
-SliderFrame.Parent = MiscPage
-SliderFrame.Size = UDim2.new(1, 0, 0, 45)
-SliderFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
-SliderFrame.LayoutOrder = 5
-Instance.new("UICorner", SliderFrame).CornerRadius = UDim.new(0, 6)
+local flySpeed = 20 -- Tốc độ mặc định chỉnh thành 20
 
-local flySpeed = 50
-local SliderLabel = Instance.new("TextLabel")
-SliderLabel.Parent = SliderFrame
-SliderLabel.Size = UDim2.new(1, 0, 0, 20)
-SliderLabel.Text = "Fly Speed: " .. flySpeed
-SliderLabel.BackgroundTransparency = 1
-SliderLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-SliderLabel.Font = Enum.Font.Gotham
-SliderLabel.TextSize = 12
+-- Tạo một Frame chứa 2 nút < > và chữ hiển thị tốc độ
+local SpeedControlFrame = Instance.new("Frame")
+SpeedControlFrame.Parent = MiscPage
+SpeedControlFrame.Size = UDim2.new(1, 0, 0, 28)
+SpeedControlFrame.BackgroundTransparency = 1
+SpeedControlFrame.LayoutOrder = 5
 
-local SliderBar = Instance.new("TextButton")
-SliderBar.Parent = SliderFrame
-SliderBar.Size = UDim2.new(0.9, 0, 0, 10)
-SliderBar.Position = UDim2.new(0.05, 0, 0.6, 0)
-SliderBar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-SliderBar.Text = ""
-Instance.new("UICorner", SliderBar).CornerRadius = UDim.new(1, 0)
+local DecreaseBtn = Instance.new("TextButton")
+DecreaseBtn.Parent = SpeedControlFrame
+DecreaseBtn.BackgroundColor3 = Color3.fromRGB(38, 38, 48)
+DecreaseBtn.Size = UDim2.new(0, 28, 1, 0)
+DecreaseBtn.Font = Enum.Font.GothamBold
+DecreaseBtn.Text = "<"
+DecreaseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+DecreaseBtn.TextSize = 12
+Instance.new("UICorner", DecreaseBtn).CornerRadius = UDim.new(0, 6)
 
-local SliderFill = Instance.new("Frame")
-SliderFill.Parent = SliderBar
-SliderFill.Size = UDim2.new(0.5, 0, 1, 0) -- Mặc định là 50%
-SliderFill.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-Instance.new("UICorner", SliderFill).CornerRadius = UDim.new(1, 0)
+local IncreaseBtn = Instance.new("TextButton")
+IncreaseBtn.Parent = SpeedControlFrame
+IncreaseBtn.BackgroundColor3 = Color3.fromRGB(38, 38, 48)
+IncreaseBtn.Position = UDim2.new(1, -28, 0, 0)
+IncreaseBtn.Size = UDim2.new(0, 28, 1, 0)
+IncreaseBtn.Font = Enum.Font.GothamBold
+IncreaseBtn.Text = ">"
+IncreaseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+IncreaseBtn.TextSize = 12
+Instance.new("UICorner", IncreaseBtn).CornerRadius = UDim.new(0, 6)
+
+local SpeedLabel = Instance.new("TextLabel")
+SpeedLabel.Parent = SpeedControlFrame
+SpeedLabel.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
+SpeedLabel.Position = UDim2.new(0, 33, 0, 0)
+SpeedLabel.Size = UDim2.new(1, -66, 1, 0)
+SpeedLabel.Font = Enum.Font.Gotham
+SpeedLabel.Text = "Fly Speed: " .. flySpeed
+SpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedLabel.TextSize = 12
+Instance.new("UICorner", SpeedLabel).CornerRadius = UDim.new(0, 6)
 
 local flyEnabled = false
 local flyConnection, bodyGyro, bodyVel
@@ -889,7 +899,6 @@ local function startFly()
             return
         end
 
-        -- LẤY CAMERA LIÊN TỤC TRONG LOOP ĐỂ TRÁNH LỖI GÓC NHÌN
         local currentCam = workspace.CurrentCamera
         local moveDir = Vector3.new(0, 0, 0)
 
@@ -900,7 +909,7 @@ local function startFly()
         if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
         if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0, 1, 0) end
 
-        -- Chuẩn hóa Vector để bay không bị quá tốc độ khi nhấn chéo (nhấn W+D)
+        -- Chuẩn hóa Vector để bay không bị quá tốc độ khi nhấn chéo
         if moveDir.Magnitude > 0 then
             moveDir = moveDir.Unit
         end
@@ -935,64 +944,26 @@ FlyToggleBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- SỬA LẠI LOGIC THANH TRƯỢT (SLIDER)
-local draggingSlider = false
-SliderBar.MouseButton1Down:Connect(function() draggingSlider = true end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then 
-        draggingSlider = false 
-    end
+-- Chức năng giảm tốc độ
+DecreaseBtn.MouseButton1Click:Connect(function()
+    flySpeed = math.max(5, flySpeed - 5) -- Giảm 5, tối thiểu là 5
+    SpeedLabel.Text = "Fly Speed: " .. flySpeed
+    
+    -- Hiệu ứng nhấp nháy cho nút
+    TweenService:Create(DecreaseBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
+    task.wait(0.1)
+    TweenService:Create(DecreaseBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(38, 38, 48)}):Play()
 end)
 
-UserInputService.InputChanged:Connect(function(input)
-    -- Sử dụng input.Position.X để lấy tọa độ chuột chính xác theo frame event
-    if draggingSlider and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local mouseX = input.Position.X
-        local barPos = SliderBar.AbsolutePosition.X
-        local barSize = SliderBar.AbsoluteSize.X
-        
-        -- Tính phần trăm và giới hạn từ 0 đến 1 (0% -> 100%)
-        local percent = math.clamp((mouseX - barPos) / barSize, 0, 1)
-        SliderFill.Size = UDim2.new(percent, 0, 1, 0)
-        
-        -- Tính tốc độ bay (từ 10 đến 200)
-        flySpeed = math.floor(10 + (percent * 190))
-        SliderLabel.Text = "Fly Speed: " .. flySpeed
-    end
-end)
-
-
-FlyToggleBtn.MouseButton1Click:Connect(function()
-    flyEnabled = not flyEnabled
-    if flyEnabled then
-        FlyToggleBtn.Text = "FLY: ON"
-        FlyToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-        startFly()
-    else
-        FlyToggleBtn.Text = "FLY: OFF"
-        FlyToggleBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-        stopFly()
-    end
-end)
-
-local draggingSlider = false
-SliderBar.MouseButton1Down:Connect(function() draggingSlider = true end)
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then draggingSlider = false end
-end)
-UserInputService.InputChanged:Connect(function(input)
-    if draggingSlider and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local mousePos = UserInputService:GetMouseLocation().X
-        local barPos = SliderBar.AbsolutePosition.X
-        local barSize = SliderBar.AbsoluteSize.X
-        
-        local percent = math.clamp((mousePos - barPos) / barSize, 0, 1)
-        SliderFill.Size = UDim2.new(percent, 0, 1, 0)
-        
-        flySpeed = math.floor(10 + (percent * 190))
-        SliderLabel.Text = "Fly Speed: " .. flySpeed
-    end
+-- Chức năng tăng tốc độ
+IncreaseBtn.MouseButton1Click:Connect(function()
+    flySpeed = math.min(250, flySpeed + 5) -- Tăng 5, tối đa là 250
+    SpeedLabel.Text = "Fly Speed: " .. flySpeed
+    
+    -- Hiệu ứng nhấp nháy cho nút
+    TweenService:Create(IncreaseBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
+    task.wait(0.1)
+    TweenService:Create(IncreaseBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(38, 38, 48)}):Play()
 end)
 
 --------------------------------------------------
