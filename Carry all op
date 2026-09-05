@@ -873,18 +873,17 @@ local function startFly()
 
     hum.PlatformStand = true
 
-    -- Xóa các Body Movers cũ nếu còn sót lại để tránh xung đột
     if root:FindFirstChild("FlyBodyGyro") then root.FlyBodyGyro:Destroy() end
     if root:FindFirstChild("FlyBodyVelocity") then root.FlyBodyVelocity:Destroy() end
 
-    bodyGyro = Instance.new("BodyGyro")
+    local bodyGyro = Instance.new("BodyGyro")
     bodyGyro.Name = "FlyBodyGyro"
     bodyGyro.P = 9e4
     bodyGyro.maxTorque = Vector3.new(9e9, 9e9, 9e9)
     bodyGyro.cframe = root.CFrame
     bodyGyro.Parent = root
 
-    bodyVel = Instance.new("BodyVelocity")
+    local bodyVel = Instance.new("BodyVelocity")
     bodyVel.Name = "FlyBodyVelocity"
     bodyVel.velocity = Vector3.zero
     bodyVel.maxForce = Vector3.new(9e9, 9e9, 9e9)
@@ -893,8 +892,10 @@ local function startFly()
     flyConnection = RunService.RenderStepped:Connect(function()
         if not char or not root or not hum or hum.Health <= 0 then
             flyEnabled = false
-            FlyToggleBtn.Text = "FLY: OFF"
-            FlyToggleBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+            if FlyToggleBtn then
+                FlyToggleBtn.Text = "FLY: OFF"
+                FlyToggleBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+            end
             if flyConnection then flyConnection:Disconnect() end
             return
         end
@@ -902,7 +903,6 @@ local function startFly()
         local currentCam = workspace.CurrentCamera
         local moveDir = Vector3.new(0, 0, 0)
 
-        -- 1. Hỗ trợ bàn phím PC
         if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + currentCam.CFrame.LookVector end
         if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - currentCam.CFrame.LookVector end
         if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + currentCam.CFrame.RightVector end
@@ -910,20 +910,14 @@ local function startFly()
         if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
         if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0, 1, 0) end
 
-        -- 2. Hỗ trợ điện thoại (Bay theo hướng nhìn của camera khi kéo joystick)
         if moveDir.Magnitude == 0 and hum.MoveDirection.Magnitude > 0 then
-            -- Lấy hướng tiến/lùi và trái/phải dựa hoàn toàn vào camera để có thể bay lên/xuống khi nhìn lên/xuống
             local camLook = currentCam.CFrame.LookVector
             local camRight = currentCam.CFrame.RightVector
-            
-            -- Chuyển đổi MoveDirection của Humanoid sang hệ tọa độ của Camera
             local forwardFactor = hum.MoveDirection:Dot(camLook)
-            local rightFactor = hum.MoveDirection:Dot(currentCam.CFrame.RightVector)
-            
+            local rightFactor = hum.MoveDirection:Dot(camRight)
             moveDir = (camLook * forwardFactor) + (camRight * rightFactor)
         end
 
-        -- 3. Nút nhảy (Jump) trên điện thoại để bay lên
         if hum.Jump then
             moveDir = moveDir + Vector3.new(0, 1, 0)
         end
@@ -935,6 +929,8 @@ local function startFly()
         bodyGyro.cframe = currentCam.CFrame
         bodyVel.velocity = moveDir * flySpeed
     end)
+end
+
 
 FlyToggleBtn.MouseButton1Click:Connect(function()
     flyEnabled = not flyEnabled
