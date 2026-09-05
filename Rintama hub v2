@@ -9,8 +9,10 @@ local TextChatService = game:GetService("TextChatService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
+local camera = workspace.CurrentCamera
 
 --------------------------------------------------
 --// 1. CC / MOD DETECTOR & STEALTH ESP
@@ -189,16 +191,13 @@ local function ProcessPlayer(player)
     end)
 end
 
--- Kích hoạt Detector Engine
 task.spawn(function()
     for _, p in ipairs(Players:GetPlayers()) do
         task.spawn(ProcessPlayer, p)
     end
-
     Players.PlayerAdded:Connect(function(p)
         task.spawn(ProcessPlayer, p)
     end)
-
     print("⚡ [CC / MOD DETECTOR]: HỆ THỐNG ĐÃ KÍCH HOẠT (PURE COMMAND LEVEL)!")
 end)
 
@@ -207,15 +206,15 @@ end)
 --------------------------------------------------
 local targetParent
 if gethui then
-	targetParent = gethui()
+    targetParent = gethui()
 elseif syn and syn.protect_gui then
-	targetParent = game:GetService("CoreGui")
+    targetParent = game:GetService("CoreGui")
 else
-	targetParent = game:GetService("CoreGui")
+    targetParent = game:GetService("CoreGui")
 end
 
 if targetParent:FindFirstChild("OrochimaruHub") then
-	targetParent:FindFirstChild("OrochimaruHub"):Destroy()
+    targetParent:FindFirstChild("OrochimaruHub"):Destroy()
 end
 
 getgenv().AutoFarmDelivery = false
@@ -226,19 +225,11 @@ ScreenGui.Name = "OrochimaruHub"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-if gethui then
-	ScreenGui.Parent = gethui()
-elseif syn and syn.protect_gui then
-	syn.protect_gui(ScreenGui)
-	ScreenGui.Parent = game:GetService("CoreGui")
-else
-	ScreenGui.Parent = game:GetService("CoreGui")
-end
+ScreenGui.Parent = targetParent
 
 ScreenGui.Destroying:Connect(function()
-	getgenv().AutoFarmDelivery = false
-	getgenv().SpamNoiseToggled = false
+    getgenv().AutoFarmDelivery = false
+    getgenv().SpamNoiseToggled = false
 end)
 
 local chatWindow = TextChatService:FindFirstChildOfClass("ChatWindowConfiguration")
@@ -257,7 +248,6 @@ OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 OpenBtn.TextSize = 12
 OpenBtn.Visible = false
 Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(0, 10)
-
 local OpenStroke = Instance.new("UIStroke", OpenBtn)
 OpenStroke.Thickness = 2
 OpenStroke.Color = Color3.fromRGB(70, 70, 90)
@@ -270,7 +260,6 @@ MainFrame.Size = UDim2.fromOffset(240, 245)
 MainFrame.Active = true
 MainFrame.Draggable = true
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
-
 local MainStroke = Instance.new("UIStroke", MainFrame)
 MainStroke.Thickness = 2
 MainStroke.Color = Color3.fromRGB(70, 70, 90)
@@ -298,13 +287,12 @@ MinimizeBtn.TextSize = 14
 Instance.new("UICorner", MinimizeBtn).CornerRadius = UDim.new(0, 4)
 
 MinimizeBtn.MouseButton1Click:Connect(function()
-	MainFrame.Visible = false
-	OpenBtn.Visible = true
+    MainFrame.Visible = false
+    OpenBtn.Visible = true
 end)
-
 OpenBtn.MouseButton1Click:Connect(function()
-	MainFrame.Visible = true
-	OpenBtn.Visible = false
+    MainFrame.Visible = true
+    OpenBtn.Visible = false
 end)
 
 local TabContainer = Instance.new("Frame")
@@ -359,32 +347,45 @@ TrollPage.Position = UDim2.fromOffset(12, 75)
 TrollPage.Size = UDim2.new(1, -24, 1, -95)
 TrollPage.Visible = false
 
-local MiscPage = Instance.new("Frame")
+local MiscPage = Instance.new("ScrollingFrame")
 MiscPage.Parent = MainFrame
 MiscPage.BackgroundTransparency = 1
 MiscPage.Position = UDim2.fromOffset(12, 75)
 MiscPage.Size = UDim2.new(1, -24, 1, -95)
+MiscPage.CanvasSize = UDim2.new(0, 0, 1.8, 0) 
+MiscPage.ScrollBarThickness = 2
+MiscPage.BorderSizePixel = 0
+MiscPage.ScrollingDirection = Enum.ScrollingDirection.Y
 MiscPage.Visible = false
 
+local MiscLayout = Instance.new("UIListLayout")
+MiscLayout.Parent = MiscPage
+MiscLayout.Padding = UDim.new(0, 6) 
+MiscLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+MiscLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
 local function SwitchTab(tabName)
-	FarmPage.Visible = (tabName == "FARM")
-	TrollPage.Visible = (tabName == "TROLL")
-	MiscPage.Visible = (tabName == "MISC")
-	
-	FarmTabBtn.BackgroundColor3 = (tabName == "FARM") and Color3.fromRGB(55, 170, 85) or Color3.fromRGB(45, 45, 55)
-	FarmTabBtn.TextColor3 = (tabName == "FARM") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
-	
-	TrollTabBtn.BackgroundColor3 = (tabName == "TROLL") and Color3.fromRGB(170, 55, 55) or Color3.fromRGB(45, 45, 55)
-	TrollTabBtn.TextColor3 = (tabName == "TROLL") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
-	
-	MiscTabBtn.BackgroundColor3 = (tabName == "MISC") and Color3.fromRGB(55, 85, 170) or Color3.fromRGB(45, 45, 55)
-	MiscTabBtn.TextColor3 = (tabName == "MISC") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
+    FarmPage.Visible = (tabName == "FARM")
+    TrollPage.Visible = (tabName == "TROLL")
+    MiscPage.Visible = (tabName == "MISC")
+    
+    FarmTabBtn.BackgroundColor3 = (tabName == "FARM") and Color3.fromRGB(55, 170, 85) or Color3.fromRGB(45, 45, 55)
+    FarmTabBtn.TextColor3 = (tabName == "FARM") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
+    
+    TrollTabBtn.BackgroundColor3 = (tabName == "TROLL") and Color3.fromRGB(170, 55, 55) or Color3.fromRGB(45, 45, 55)
+    TrollTabBtn.TextColor3 = (tabName == "TROLL") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
+    
+    MiscTabBtn.BackgroundColor3 = (tabName == "MISC") and Color3.fromRGB(55, 85, 170) or Color3.fromRGB(45, 45, 55)
+    MiscTabBtn.TextColor3 = (tabName == "MISC") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
 end
 
 FarmTabBtn.MouseButton1Click:Connect(function() SwitchTab("FARM") end)
 TrollTabBtn.MouseButton1Click:Connect(function() SwitchTab("TROLL") end)
 MiscTabBtn.MouseButton1Click:Connect(function() SwitchTab("MISC") end)
 
+--------------------------------------------------
+-- FARM PAGE LOGIC
+--------------------------------------------------
 local MoneyLabel = Instance.new("TextLabel")
 MoneyLabel.Parent = FarmPage
 MoneyLabel.BackgroundTransparency = 1
@@ -396,15 +397,15 @@ MoneyLabel.TextSize = 14
 MoneyLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 task.spawn(function()
-	while ScreenGui.Parent do
-		local money = LocalPlayer:FindFirstChild("Money")
-		if money then
-			MoneyLabel.Text = "Money: " .. tostring(money.Value)
-		else
-			MoneyLabel.Text = "Money: ..."
-		end
-		task.wait(0.2)
-	end
+    while ScreenGui.Parent do
+        local money = LocalPlayer:FindFirstChild("Money")
+        if money then
+            MoneyLabel.Text = "Money: " .. tostring(money.Value)
+        else
+            MoneyLabel.Text = "Money: ..."
+        end
+        task.wait(0.2)
+    end
 end)
 
 local ToggleFarmBtn = Instance.new("TextButton")
@@ -419,32 +420,32 @@ ToggleFarmBtn.TextSize = 13
 Instance.new("UICorner", ToggleFarmBtn).CornerRadius = UDim.new(0, 6)
 
 local function executeFarmScript()
-	pcall(function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/nenbreaklimit/Someshit/refs/heads/main/rintamafarmtofu"))()
-	end)
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/nenbreaklimit/Someshit/refs/heads/main/rintamafarmtofu"))()
+    end)
 end
 
 ToggleFarmBtn.MouseButton1Click:Connect(function()
-	getgenv().AutoFarmDelivery = not getgenv().AutoFarmDelivery
-	if getgenv().AutoFarmDelivery then
-		ToggleFarmBtn.Text = "AUTO FARM: ON"
-		ToggleFarmBtn.BackgroundColor3 = Color3.fromRGB(55, 170, 85)
-		task.spawn(executeFarmScript)
-	else
-		ToggleFarmBtn.Text = "AUTO FARM: OFF"
-		ToggleFarmBtn.BackgroundColor3 = Color3.fromRGB(170, 55, 55)
-	end
+    getgenv().AutoFarmDelivery = not getgenv().AutoFarmDelivery
+    if getgenv().AutoFarmDelivery then
+        ToggleFarmBtn.Text = "AUTO FARM: ON"
+        ToggleFarmBtn.BackgroundColor3 = Color3.fromRGB(55, 170, 85)
+        task.spawn(executeFarmScript)
+    else
+        ToggleFarmBtn.Text = "AUTO FARM: OFF"
+        ToggleFarmBtn.BackgroundColor3 = Color3.fromRGB(170, 55, 55)
+    end
 end)
 
 LocalPlayer.CharacterAdded:Connect(function()
-	task.wait(1.5)
-	if getgenv().AutoFarmDelivery then
-		task.spawn(executeFarmScript)
-	end
+    task.wait(1.5)
+    if getgenv().AutoFarmDelivery then
+        task.spawn(executeFarmScript)
+    end
 end)
 
 --------------------------------------------------
---// TROLL PAGE (CẬP NHẬT GIAO DIỆN)
+-- TROLL PAGE LOGIC
 --------------------------------------------------
 local TargetBox = Instance.new("TextBox")
 TargetBox.Parent = TrollPage
@@ -457,12 +458,10 @@ TargetBox.Text = ""
 TargetBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 TargetBox.TextSize = 12
 Instance.new("UICorner", TargetBox).CornerRadius = UDim.new(0, 6)
-
 local TargetBoxStroke = Instance.new("UIStroke", TargetBox)
 TargetBoxStroke.Thickness = 1
 TargetBoxStroke.Color = Color3.fromRGB(70, 70, 90)
 
--- [RAGDOLL TARGET BUTTON]
 local ToggleRagdollTargetBtn = Instance.new("TextButton")
 ToggleRagdollTargetBtn.Parent = TrollPage
 ToggleRagdollTargetBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
@@ -474,7 +473,6 @@ ToggleRagdollTargetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleRagdollTargetBtn.TextSize = 13
 Instance.new("UICorner", ToggleRagdollTargetBtn).CornerRadius = UDim.new(0, 6)
 
--- [RAGDOLL ALL BUTTON] (Đã đổi thành nút Bật/Tắt)
 local RagdollAllBtn = Instance.new("TextButton")
 RagdollAllBtn.Parent = TrollPage
 RagdollAllBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
@@ -486,7 +484,6 @@ RagdollAllBtn.TextColor3 = Color3.fromRGB(255, 150, 50)
 RagdollAllBtn.TextSize = 13
 Instance.new("UICorner", RagdollAllBtn).CornerRadius = UDim.new(0, 6)
 
--- [SPAM NOISE BUTTON]
 local ToggleSpamNoiseBtn = Instance.new("TextButton")
 ToggleSpamNoiseBtn.Parent = TrollPage
 ToggleSpamNoiseBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
@@ -499,251 +496,169 @@ ToggleSpamNoiseBtn.TextSize = 13
 Instance.new("UICorner", ToggleSpamNoiseBtn).CornerRadius = UDim.new(0, 6)
 
 local function GetPlayerFromString(str)
-	if not str or str == "" then return nil end
-	str = string.lower(str)
-	for _, player in ipairs(Players:GetPlayers()) do
-		if string.find(string.lower(player.Name), str) or string.find(string.lower(player.DisplayName), str) then
-			return player
-		end
-	end
-	return nil
+    if not str or str == "" then return nil end
+    str = string.lower(str)
+    for _, player in ipairs(Players:GetPlayers()) do
+        if string.find(string.lower(player.Name), str) or string.find(string.lower(player.DisplayName), str) then
+            return player
+        end
+    end
+    return nil
 end
 
--- [RAGDOLL TARGET FUNCTION - ANTI-TELEPORT (RETURN TO OLD POSITION)]
 ToggleRagdollTargetBtn.MouseButton1Click:Connect(function()
-	local targetPlayer = GetPlayerFromString(TargetBox.Text)
-    
-	if not targetPlayer then
-		TargetBox.Text = "Not found!"
-		task.wait(1)
-		TargetBox.Text = ""
-		return
-	end
-    
-	TargetBox.Text = targetPlayer.Name
+    local targetPlayer = GetPlayerFromString(TargetBox.Text)
+    if not targetPlayer then
+        TargetBox.Text = "Not found!"
+        task.wait(1)
+        TargetBox.Text = ""
+        return
+    end
+    TargetBox.Text = targetPlayer.Name
 
-	TweenService:Create(ToggleRagdollTargetBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
-	task.wait(0.1)
-	TweenService:Create(ToggleRagdollTargetBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
+    TweenService:Create(ToggleRagdollTargetBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
+    task.wait(0.1)
+    TweenService:Create(ToggleRagdollTargetBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
 
-	if targetPlayer.Character then
-		local character = LocalPlayer.Character
-		local myHRP = character and character:FindFirstChild("HumanoidRootPart")
-		
-		if myHRP then
-			-- 1. Lưu lại tọa độ hiện tại
-			local originalCFrame = myHRP.CFrame
-			
-			-- 2. Tạm thời khóa cứng nhân vật để chống bị server kéo đi
-			myHRP.Anchored = true
-
-			-- 3. Bắn sự kiện tấn công (RedEvent)
-			pcall(function()
-				local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
-				local args = {
-					{
-						["\194\152"] = {
-							soundAsset,
-							{
-								ParentFolder = soundAsset.Parent,
-								RollOffMode = Enum.RollOffMode.Inverse,
-								Looped = false,
-								MinDistance = 5,
-								MaxDistance = 50,
-								Name = "",
-								Volume = 0.5,
-								RandomizePlaybackSpeed = true,
-								PlayOnRemove = true
-							}
-						},
-						["\194\169"] = {
-							targetPlayer.Character,
-							false
-						}
-					},
-					{}
-				}
-				ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
-			end)
-
-			-- 4. Ép vị trí liên tục trong khoảng 0.5s để vô hiệu hóa mọi force kéo đi
-			task.spawn(function()
-				for i = 1, 10 do
-					task.wait(0.05) 
-					if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-						LocalPlayer.Character.HumanoidRootPart.CFrame = originalCFrame
-					end
-				end
-				
-				-- 5. Đảm bảo mọi thứ xong xuôi thì mở khóa di chuyển lại bình thường
-				if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-					LocalPlayer.Character.HumanoidRootPart.Anchored = false
-					LocalPlayer.Character.HumanoidRootPart.CFrame = originalCFrame
-				end
-			end)
-		end
-	end
+    if targetPlayer.Character then
+        local character = LocalPlayer.Character
+        local myHRP = character and character:FindFirstChild("HumanoidRootPart")
+        if myHRP then
+            local originalCFrame = myHRP.CFrame
+            myHRP.Anchored = true
+            pcall(function()
+                local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
+                local args = {
+                    {
+                        ["\194\152"] = {
+                            soundAsset,
+                            {
+                                ParentFolder = soundAsset.Parent, RollOffMode = Enum.RollOffMode.Inverse, Looped = false,
+                                MinDistance = 5, MaxDistance = 50, Name = "", Volume = 0.5,
+                                RandomizePlaybackSpeed = true, PlayOnRemove = true
+                            }
+                        },
+                        ["\194\169"] = { targetPlayer.Character, false }
+                    },
+                    {}
+                }
+                ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
+            end)
+            task.spawn(function()
+                for i = 1, 10 do
+                    task.wait(0.05) 
+                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                        LocalPlayer.Character.HumanoidRootPart.CFrame = originalCFrame
+                    end
+                end
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    LocalPlayer.Character.HumanoidRootPart.Anchored = false
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = originalCFrame
+                end
+            end)
+        end
+    end
 end)
 
--- [RAGDOLL ALL FUNCTION - BẬT/TẮT, GIỮ VỊ TRÍ, LOOP 0.5s]
 local isRagdollingAll = false
-
 RagdollAllBtn.MouseButton1Click:Connect(function()
-	isRagdollingAll = not isRagdollingAll -- Đảo ngược trạng thái Bật/Tắt
+    isRagdollingAll = not isRagdollingAll
+    TweenService:Create(RagdollAllBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
+    task.wait(0.1)
+    TweenService:Create(RagdollAllBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
 
-	-- Hiệu ứng khi bấm nút
-	TweenService:Create(RagdollAllBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
-	task.wait(0.1)
-	TweenService:Create(RagdollAllBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
-
-	if isRagdollingAll then
-		-- Trạng thái BẬT
-		RagdollAllBtn.Text = "RAGDOLL ALL: ON"
-		RagdollAllBtn.TextColor3 = Color3.fromRGB(100, 255, 100) -- Đổi sang màu xanh lá
-
-		task.spawn(function()
-			local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
-			
-			while isRagdollingAll do
-				-- Khóa vị trí bản thân liên tục trong vòng lặp để tránh bị game ép dịch chuyển
-				if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-					LocalPlayer.Character.HumanoidRootPart.Anchored = true
-				end
-				
-				local allPlayers = Players:GetPlayers()
-				
-				for _, player in ipairs(allPlayers) do
-					-- Nếu người dùng tắt giữa chừng, thoát vòng lặp ngay lập tức
-					if not isRagdollingAll then break end
-					
-					if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") then
-						pcall(function()
-							local args = {
-								{
-									["\194\152"] = {
-										soundAsset,
-										{
-											ParentFolder = soundAsset.Parent,
-											RollOffMode = Enum.RollOffMode.Inverse,
-											Looped = false,
-											MinDistance = 5000,
-											MaxDistance = 5000,
-											Name = "",
-											Volume = 0.5,
-											RandomizePlaybackSpeed = true,
-											PlayOnRemove = true
-										}
-									},
-									["\194\169"] = {
-										player.Character,
-										false
-									}
-								},
-								{}
-							}
-							ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
-						end)
-						
-						-- Tốc độ thực thi và cách nhau mỗi lượt đổi người là 0.5 giây
-						task.wait(0.5)
-					end
-				end
-				-- Nghỉ 0.1s sau khi đã quét hết danh sách để tránh Crash nếu server chỉ có 1 mình bạn
-				task.wait(0.1) 
-			end
-
-			-- Mở khóa di chuyển khi vòng lặp hoàn toàn kết thúc
-			if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-				LocalPlayer.Character.HumanoidRootPart.Anchored = false
-			end
-		end)
-	else
-		-- Trạng thái TẮT
-		RagdollAllBtn.Text = "RAGDOLL ALL: OFF"
-		RagdollAllBtn.TextColor3 = Color3.fromRGB(255, 150, 50) -- Trả về màu cam mặc định
-		
-		-- Mở khóa di chuyển tức thời khi tắt nút
-		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-			LocalPlayer.Character.HumanoidRootPart.Anchored = false
-		end
-	end
+    if isRagdollingAll then
+        RagdollAllBtn.Text = "RAGDOLL ALL: ON"
+        RagdollAllBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+        task.spawn(function()
+            local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
+            while isRagdollingAll do
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    LocalPlayer.Character.HumanoidRootPart.Anchored = true
+                end
+                local allPlayers = Players:GetPlayers()
+                for _, player in ipairs(allPlayers) do
+                    if not isRagdollingAll then break end
+                    if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") then
+                        pcall(function()
+                            local args = {
+                                {
+                                    ["\194\152"] = {
+                                        soundAsset,
+                                        {
+                                            ParentFolder = soundAsset.Parent, RollOffMode = Enum.RollOffMode.Inverse, Looped = false,
+                                            MinDistance = 5000, MaxDistance = 5000, Name = "", Volume = 0.5,
+                                            RandomizePlaybackSpeed = true, PlayOnRemove = true
+                                        }
+                                    },
+                                    ["\194\169"] = { player.Character, false }
+                                },
+                                {}
+                            }
+                            ReplicatedStorage:WaitForChild("RedEvent"):FireServer(unpack(args))
+                        end)
+                        task.wait(0.5)
+                    end
+                end
+                task.wait(0.1) 
+            end
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                LocalPlayer.Character.HumanoidRootPart.Anchored = false
+            end
+        end)
+    else
+        RagdollAllBtn.Text = "RAGDOLL ALL: OFF"
+        RagdollAllBtn.TextColor3 = Color3.fromRGB(255, 150, 50)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.Anchored = false
+        end
+    end
 end)
 
--- [SPAM NOISE LOOP]
 local spamNoiseTask = nil
-
 ToggleSpamNoiseBtn.MouseButton1Click:Connect(function()
-	getgenv().SpamNoiseToggled = not getgenv().SpamNoiseToggled
-	
-	if getgenv().SpamNoiseToggled then
-		ToggleSpamNoiseBtn.Text = "SPAM NOISE: ON"
-		ToggleSpamNoiseBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
-		TweenService:Create(ToggleSpamNoiseBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(50, 70, 50)}):Play()
-		
-		-- Dọn dẹp luồng cũ nếu có
-		if spamNoiseTask then
-			task.cancel(spamNoiseTask)
-		end
-		
-		spamNoiseTask = task.spawn(function()
-			local RedEvent = ReplicatedStorage:WaitForChild("RedEvent")
-			local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
-			local parentFolder = soundAsset.Parent
-
-			while getgenv().SpamNoiseToggled do
-				for _, player in ipairs(Players:GetPlayers()) do
-					if player ~= Players.LocalPlayer and player.Character then
-						pcall(function()
-							local args = {
-								{
-									["\194\152"] = {
-										soundAsset,
-										{
-											ParentFolder = parentFolder,
-											RollOffMode = Enum.RollOffMode.Inverse,
-											Looped = false,
-											MinDistance = 5000,
-											MaxDistance = 5000,
-											Name = "",
-											Volume = 0.5,
-											RandomizePlaybackSpeed = true,
-											PlayOnRemove = true
-										}
-									},
-									["\194\169"] = {
-										player.Character,
-										false
-									}
-								},
-								{}
-							}
-							-- Bắn sự kiện spam âm thanh
-							RedEvent:FireServer(unpack(args))
-						end)
-					end
-				end
-				
-				-- Đã sửa: Giảm thời gian chờ xuống mức siêu tốc (0.05 giây)
-				task.wait(0.05) 
-			end
-		end)
-	else
-		ToggleSpamNoiseBtn.Text = "SPAM NOISE: OFF"
-		ToggleSpamNoiseBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-		TweenService:Create(ToggleSpamNoiseBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
-		
-		-- Tắt ngay lập tức khi bấm OFF
-		if spamNoiseTask then
-			task.cancel(spamNoiseTask)
-			spamNoiseTask = nil
-		end
-	end
+    getgenv().SpamNoiseToggled = not getgenv().SpamNoiseToggled
+    if getgenv().SpamNoiseToggled then
+        ToggleSpamNoiseBtn.Text = "SPAM NOISE: ON"
+        ToggleSpamNoiseBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+        TweenService:Create(ToggleSpamNoiseBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(50, 70, 50)}):Play()
+        if spamNoiseTask then task.cancel(spamNoiseTask) end
+        spamNoiseTask = task.spawn(function()
+            local RedEvent = ReplicatedStorage:WaitForChild("RedEvent")
+            local soundAsset = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Sounds"):WaitForChild("Combat"):WaitForChild("Swing"):WaitForChild("Light"):WaitForChild("0013")
+            local parentFolder = soundAsset.Parent
+            while getgenv().SpamNoiseToggled do
+                for _, player in ipairs(Players:GetPlayers()) do
+                    if player ~= Players.LocalPlayer and player.Character then
+                        pcall(function()
+                            local args = { { ["\194\152"] = { soundAsset, { ParentFolder = parentFolder, RollOffMode = Enum.RollOffMode.Inverse, Looped = false, MinDistance = 5000, MaxDistance = 5000, Name = "", Volume = 0.5, RandomizePlaybackSpeed = true, PlayOnRemove = true } }, ["\194\169"] = { player.Character, false } }, {} }
+                            RedEvent:FireServer(unpack(args))
+                        end)
+                    end
+                end
+                task.wait(0.05) 
+            end
+        end)
+    else
+        ToggleSpamNoiseBtn.Text = "SPAM NOISE: OFF"
+        ToggleSpamNoiseBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+        TweenService:Create(ToggleSpamNoiseBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
+        if spamNoiseTask then
+            task.cancel(spamNoiseTask)
+            spamNoiseTask = nil
+        end
+    end
 end)
+
+--------------------------------------------------
+-- MISC PAGE LOGIC (SPECTATE, TELEPORT, FLY)
+--------------------------------------------------
 
 local SpectateFrame = Instance.new("Frame")
 SpectateFrame.Parent = MiscPage
 SpectateFrame.BackgroundTransparency = 1
 SpectateFrame.Size = UDim2.new(1, 0, 0, 28)
+SpectateFrame.LayoutOrder = 1
 
 local PrevBtn = Instance.new("TextButton")
 PrevBtn.Parent = SpectateFrame
@@ -780,23 +695,23 @@ Instance.new("UICorner", SpectateName).CornerRadius = UDim.new(0, 6)
 local ToggleSpectateBtn = Instance.new("TextButton")
 ToggleSpectateBtn.Parent = MiscPage
 ToggleSpectateBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-ToggleSpectateBtn.Position = UDim2.fromOffset(0, 34)
 ToggleSpectateBtn.Size = UDim2.new(1, 0, 0, 28)
 ToggleSpectateBtn.Font = Enum.Font.GothamBold
 ToggleSpectateBtn.Text = "SPECTATE: OFF"
 ToggleSpectateBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
 ToggleSpectateBtn.TextSize = 13
+ToggleSpectateBtn.LayoutOrder = 2
 Instance.new("UICorner", ToggleSpectateBtn).CornerRadius = UDim.new(0, 6)
 
 local TeleportBtn = Instance.new("TextButton")
 TeleportBtn.Parent = MiscPage
 TeleportBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-TeleportBtn.Position = UDim2.fromOffset(0, 68)
 TeleportBtn.Size = UDim2.new(1, 0, 0, 28)
 TeleportBtn.Font = Enum.Font.GothamBold
 TeleportBtn.Text = "TELEPORT TO PLAYER"
 TeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 TeleportBtn.TextSize = 13
+TeleportBtn.LayoutOrder = 3
 Instance.new("UICorner", TeleportBtn).CornerRadius = UDim.new(0, 6)
 
 local Spectating = false
@@ -804,94 +719,270 @@ local SpectateIndex = 1
 local TargetSpectatePlayer = nil
 
 local function GetSpectateTargets()
-	local targets = {}
-	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= LocalPlayer then
-			table.insert(targets, p)
-		end
-	end
-	return targets
+    local targets = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then table.insert(targets, p) end
+    end
+    return targets
 end
 
 local function UpdateSpectate()
-	local targets = GetSpectateTargets()
-	if #targets == 0 then
-		SpectateName.Text = "No Players"
-		TargetSpectatePlayer = nil
-		if Spectating and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-			workspace.CurrentCamera.CameraSubject = LocalPlayer.Character.Humanoid
-		end
-		return
-	end
+    local targets = GetSpectateTargets()
+    if #targets == 0 then
+        SpectateName.Text = "No Players"
+        TargetSpectatePlayer = nil
+        if Spectating and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            workspace.CurrentCamera.CameraSubject = LocalPlayer.Character.Humanoid
+        end
+        return
+    end
 
-	if SpectateIndex > #targets then SpectateIndex = 1 end
-	if SpectateIndex < 1 then SpectateIndex = #targets end
+    if SpectateIndex > #targets then SpectateIndex = 1 end
+    if SpectateIndex < 1 then SpectateIndex = #targets end
 
-	TargetSpectatePlayer = targets[SpectateIndex]
-	SpectateName.Text = TargetSpectatePlayer.Name
+    TargetSpectatePlayer = targets[SpectateIndex]
+    SpectateName.Text = TargetSpectatePlayer.Name
 
-	if Spectating and TargetSpectatePlayer.Character and TargetSpectatePlayer.Character:FindFirstChild("Humanoid") then
-		workspace.CurrentCamera.CameraSubject = TargetSpectatePlayer.Character.Humanoid
-	end
+    if Spectating and TargetSpectatePlayer.Character and TargetSpectatePlayer.Character:FindFirstChild("Humanoid") then
+        workspace.CurrentCamera.CameraSubject = TargetSpectatePlayer.Character.Humanoid
+    end
 end
 
 PrevBtn.MouseButton1Click:Connect(function()
-	SpectateIndex = SpectateIndex - 1
-	UpdateSpectate()
+    SpectateIndex = SpectateIndex - 1
+    UpdateSpectate()
 end)
 
 NextBtn.MouseButton1Click:Connect(function()
-	SpectateIndex = SpectateIndex + 1
-	UpdateSpectate()
+    SpectateIndex = SpectateIndex + 1
+    UpdateSpectate()
 end)
 
 ToggleSpectateBtn.MouseButton1Click:Connect(function()
-	Spectating = not Spectating
-	if Spectating then
-		ToggleSpectateBtn.Text = "SPECTATE: ON"
-		ToggleSpectateBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
-		TweenService:Create(ToggleSpectateBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(50, 70, 50)}):Play()
-		UpdateSpectate()
-	else
-		ToggleSpectateBtn.Text = "SPECTATE: OFF"
-		ToggleSpectateBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-		TweenService:Create(ToggleSpectateBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
-		TargetSpectatePlayer = nil
-		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-			workspace.CurrentCamera.CameraSubject = LocalPlayer.Character.Humanoid
-		end
-	end
+    Spectating = not Spectating
+    if Spectating then
+        ToggleSpectateBtn.Text = "SPECTATE: ON"
+        ToggleSpectateBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+        TweenService:Create(ToggleSpectateBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(50, 70, 50)}):Play()
+        UpdateSpectate()
+    else
+        ToggleSpectateBtn.Text = "SPECTATE: OFF"
+        ToggleSpectateBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+        TweenService:Create(ToggleSpectateBtn, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
+        TargetSpectatePlayer = nil
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            workspace.CurrentCamera.CameraSubject = LocalPlayer.Character.Humanoid
+        end
+    end
 end)
 
 TeleportBtn.MouseButton1Click:Connect(function()
-	if TargetSpectatePlayer and TargetSpectatePlayer.Character and TargetSpectatePlayer.Character:FindFirstChild("HumanoidRootPart") then
-		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-			TweenService:Create(TeleportBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
-			task.wait(0.1)
-			TweenService:Create(TeleportBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
-			
-			LocalPlayer.Character.HumanoidRootPart.CFrame = TargetSpectatePlayer.Character.HumanoidRootPart.CFrame
-		end
-	end
+    if TargetSpectatePlayer and TargetSpectatePlayer.Character and TargetSpectatePlayer.Character:FindFirstChild("HumanoidRootPart") then
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            TweenService:Create(TeleportBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
+            task.wait(0.1)
+            TweenService:Create(TeleportBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play()
+            LocalPlayer.Character.HumanoidRootPart.CFrame = TargetSpectatePlayer.Character.HumanoidRootPart.CFrame
+        end
+    end
 end)
 
 task.spawn(function()
-	while ScreenGui.Parent do
-		task.wait(0.2)
-		if Spectating then
-			if TargetSpectatePlayer and TargetSpectatePlayer.Parent == Players then
-				if TargetSpectatePlayer.Character and TargetSpectatePlayer.Character:FindFirstChild("Humanoid") then
-					if workspace.CurrentCamera.CameraSubject ~= TargetSpectatePlayer.Character.Humanoid then
-						workspace.CurrentCamera.CameraSubject = TargetSpectatePlayer.Character.Humanoid
-					end
-				end
-			else
-				UpdateSpectate()
-			end
-		end
-	end
+    while ScreenGui.Parent do
+        task.wait(0.2)
+        if Spectating then
+            if TargetSpectatePlayer and TargetSpectatePlayer.Parent == Players then
+                if TargetSpectatePlayer.Character and TargetSpectatePlayer.Character:FindFirstChild("Humanoid") then
+                    if workspace.CurrentCamera.CameraSubject ~= TargetSpectatePlayer.Character.Humanoid then
+                        workspace.CurrentCamera.CameraSubject = TargetSpectatePlayer.Character.Humanoid
+                    end
+                end
+            else
+                UpdateSpectate()
+            end
+        end
+    end
 end)
 
+--------------------------------------------------
+-- TÍNH NĂNG FLY (ĐÃ FIX LỖI DI CHUYỂN & DÙNG NÚT < >)
+--------------------------------------------------
+local FlyToggleBtn = Instance.new("TextButton")
+FlyToggleBtn.Parent = MiscPage
+FlyToggleBtn.Size = UDim2.new(1, 0, 0, 28)
+FlyToggleBtn.Text = "FLY: OFF"
+FlyToggleBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+FlyToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+FlyToggleBtn.Font = Enum.Font.GothamBold
+FlyToggleBtn.TextSize = 13
+FlyToggleBtn.LayoutOrder = 4
+Instance.new("UICorner", FlyToggleBtn).CornerRadius = UDim.new(0, 6)
+
+local flySpeed = 40 
+
+local SpeedControlFrame = Instance.new("Frame")
+SpeedControlFrame.Parent = MiscPage
+SpeedControlFrame.Size = UDim2.new(1, 0, 0, 28)
+SpeedControlFrame.BackgroundTransparency = 1
+SpeedControlFrame.LayoutOrder = 5
+
+local DecreaseBtn = Instance.new("TextButton")
+DecreaseBtn.Parent = SpeedControlFrame
+DecreaseBtn.BackgroundColor3 = Color3.fromRGB(38, 38, 48)
+DecreaseBtn.Size = UDim2.new(0, 28, 1, 0)
+DecreaseBtn.Font = Enum.Font.GothamBold
+DecreaseBtn.Text = "<"
+DecreaseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+DecreaseBtn.TextSize = 12
+Instance.new("UICorner", DecreaseBtn).CornerRadius = UDim.new(0, 6)
+
+local IncreaseBtn = Instance.new("TextButton")
+IncreaseBtn.Parent = SpeedControlFrame
+IncreaseBtn.BackgroundColor3 = Color3.fromRGB(38, 38, 48)
+IncreaseBtn.Position = UDim2.new(1, -28, 0, 0)
+IncreaseBtn.Size = UDim2.new(0, 28, 1, 0)
+IncreaseBtn.Font = Enum.Font.GothamBold
+IncreaseBtn.Text = ">"
+IncreaseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+IncreaseBtn.TextSize = 12
+Instance.new("UICorner", IncreaseBtn).CornerRadius = UDim.new(0, 6)
+
+local SpeedLabel = Instance.new("TextLabel")
+SpeedLabel.Parent = SpeedControlFrame
+SpeedLabel.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
+SpeedLabel.Position = UDim2.new(0, 33, 0, 0)
+SpeedLabel.Size = UDim2.new(1, -66, 1, 0)
+SpeedLabel.Font = Enum.Font.Gotham
+SpeedLabel.Text = "Fly Speed: " .. flySpeed
+SpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedLabel.TextSize = 12
+Instance.new("UICorner", SpeedLabel).CornerRadius = UDim.new(0, 6)
+
+local flyEnabled = false
+local flyConnection
+
+local function stopFly()
+    if flyConnection then
+        flyConnection:Disconnect()
+        flyConnection = nil
+    end
+
+    local char = LocalPlayer.Character
+    if char then
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if root then
+            if root:FindFirstChild("FlyBodyGyro") then root.FlyBodyGyro:Destroy() end
+            if root:FindFirstChild("FlyBodyVelocity") then root.FlyBodyVelocity:Destroy() end
+        end
+        
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.PlatformStand = false
+        end
+    end
+end
+
+local function startFly()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not root or not hum then return end
+
+    hum.PlatformStand = true
+
+    if root:FindFirstChild("FlyBodyGyro") then root.FlyBodyGyro:Destroy() end
+    if root:FindFirstChild("FlyBodyVelocity") then root.FlyBodyVelocity:Destroy() end
+
+    local bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.Name = "FlyBodyGyro"
+    bodyGyro.P = 9e4
+    bodyGyro.maxTorque = Vector3.new(9e9, 9e9, 9e9)
+    bodyGyro.cframe = root.CFrame
+    bodyGyro.Parent = root
+
+    local bodyVel = Instance.new("BodyVelocity")
+    bodyVel.Name = "FlyBodyVelocity"
+    bodyVel.velocity = Vector3.zero
+    bodyVel.maxForce = Vector3.new(9e9, 9e9, 9e9)
+    bodyVel.Parent = root
+
+    flyConnection = RunService.RenderStepped:Connect(function()
+        if not char or not root or not hum or hum.Health <= 0 then
+            flyEnabled = false
+            if FlyToggleBtn then
+                FlyToggleBtn.Text = "FLY: OFF"
+                FlyToggleBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+            end
+            stopFly()
+            return
+        end
+
+        local currentCam = workspace.CurrentCamera
+        local moveDir = Vector3.new(0, 0, 0)
+
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + currentCam.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - currentCam.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + currentCam.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - currentCam.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0, 1, 0) end
+
+        if moveDir.Magnitude == 0 and hum.MoveDirection.Magnitude > 0 then
+            local camLook = currentCam.CFrame.LookVector
+            local camRight = currentCam.CFrame.RightVector
+            local forwardFactor = hum.MoveDirection:Dot(camLook)
+            local rightFactor = hum.MoveDirection:Dot(camRight)
+            moveDir = (camLook * forwardFactor) + (camRight * rightFactor)
+        end
+
+        if hum.Jump then
+            moveDir = moveDir + Vector3.new(0, 1, 0)
+        end
+
+        if moveDir.Magnitude > 0 then
+            moveDir = moveDir.Unit
+        end
+
+        bodyGyro.cframe = currentCam.CFrame
+        bodyVel.velocity = moveDir * flySpeed
+    end)
+end
+
+FlyToggleBtn.MouseButton1Click:Connect(function()
+    flyEnabled = not flyEnabled
+    if flyEnabled then
+        FlyToggleBtn.Text = "FLY: ON"
+        FlyToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+        startFly()
+    else
+        FlyToggleBtn.Text = "FLY: OFF"
+        FlyToggleBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+        stopFly()
+    end
+end)
+
+DecreaseBtn.MouseButton1Click:Connect(function()
+    flySpeed = math.max(5, flySpeed - 5)
+    SpeedLabel.Text = "Fly Speed: " .. flySpeed
+    
+    TweenService:Create(DecreaseBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
+    task.wait(0.1)
+    TweenService:Create(DecreaseBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(38, 38, 48)}):Play()
+end)
+
+IncreaseBtn.MouseButton1Click:Connect(function()
+    flySpeed = math.min(250, flySpeed + 5)
+    SpeedLabel.Text = "Fly Speed: " .. flySpeed
+    
+    TweenService:Create(IncreaseBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 120)}):Play()
+    task.wait(0.1)
+    TweenService:Create(IncreaseBtn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(38, 38, 48)}):Play()
+end)
+
+--------------------------------------------------
+-- HIỂN THỊ CREDIT
+--------------------------------------------------
 local CreditLabel = Instance.new("TextLabel")
 CreditLabel.Parent = MainFrame
 CreditLabel.BackgroundTransparency = 1
