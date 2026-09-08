@@ -8,17 +8,12 @@ local VirtualUser = game:GetService("VirtualUser")
 
 local player = Players.LocalPlayer
 
--- Dừng các phiên bản script cũ nếu đang chạy dở
-getgenv().AutoFarmDelivery = false
-task.wait(0.1)
-getgenv().AutoFarmDelivery = true
-
 -- Cấu hình
 local Config = {
     StartPos = CFrame.new(-152.8, -25, 668.1),
     DeliveryOffset = CFrame.new(0, -10, 0),
     QuestName = "Fujiwara Bunta",
-    WaitDelay = 0.5 -- Giảm thời gian chờ để farm nhanh hơn
+    WaitDelay = 0.4 -- Giảm thời gian chờ để farm nhanh hơn
 }
 
 -- Thông báo kích hoạt thành công
