@@ -6,24 +6,29 @@ local VirtualUser = game:GetService("VirtualUser")
 local player = Players.LocalPlayer
 
 --==================================================
--- EXECUTOR TOGGLE (Chỉnh 'false' để dừng script)
+-- EXECUTOR TOGGLE
 --==================================================
 getgenv().AutoFarmDelivery = true
 
--- Thông báo khi script chạy
 pcall(function()
     game.StarterGui:SetCore("SendNotification", {
         Title = "Auto Farm",
-        Text = "Script Executed Successfully!",
+        Text = "Đã tối ưu chống hụt bước!",
         Duration = 3
     })
 end)
 
+-- ĐÃ TỐI ƯU LẠI CONFIG CHỜ
 local Config = {
     StartPos = CFrame.new(-152.8, -21, 668.1),
     DeliveryOffset = CFrame.new(0, -10, 0),
     QuestName = "Fujiwara Bunta",
-    WaitDelay = 0.3
+    
+    -- Tách riêng các loại Delay để dễ tinh chỉnh theo mạng của bạn
+    TeleportDelay = 1,     -- Thời gian chờ sau khi dịch chuyển (Quan trọng để server nhận diện vị trí)
+    ActionDelay = 0.8,     -- Thời gian chờ sau khi bấm nhận/trả quest
+    FindNPCDelay = 0.5,    -- Thời gian chờ mỗi lần quét tìm NPC
+    MaxFindAttempts = 20   -- Số lần quét tìm NPC tối đa (20 x 0.5s = 10s)
 }
 
 --==================================================
@@ -63,6 +68,9 @@ local function teleportTo(targetCFrame)
     pcall(function()
         local root = getRoot()
         if root then
+            -- Tắt velocity trước khi dịch chuyển để tránh bị văng
+            root.AssemblyLinearVelocity = Vector3.zero
+            root.AssemblyAngularVelocity = Vector3.zero
             root.CFrame = targetCFrame
         end
     end)
@@ -78,7 +86,7 @@ local function applyFloat()
     if not root then return end
 
     if hum then
-        hum.PlatformStand = true -- Triệt tiêu hiệu ứng trọng lực tác động lên nhân vật
+        hum.PlatformStand = true
     end
 
     if not root:FindFirstChild("FarmBodyVelocity") then
@@ -145,39 +153,45 @@ local function completeDelivery(npcName)
 end
 
 --==================================================
--- MAIN LOOP
+-- MAIN LOOP (ĐÃ FIX LẠI LOGIC CHỐNG HỤT)
 --==================================================
 task.spawn(function()
     while getgenv().AutoFarmDelivery do
         
-        -- 1. Go To Start
+        -- BƯỚC 1: ĐI TỚI CHỖ NHẬN QUEST
         teleportTo(Config.StartPos)
-        task.wait(Config.WaitDelay)
+        task.wait(Config.TeleportDelay) -- Chờ 1 giây để Server load xong vị trí của bạn
         
         if not getgenv().AutoFarmDelivery then break end
         
-        -- 2. Take Quest
+        -- BƯỚC 2: GỬI LỆNH NHẬN QUEST
         takeQuest()
-        task.wait(Config.WaitDelay)
+        task.wait(Config.ActionDelay) -- Chờ 0.8 giây để Server kịp đánh dấu bạn đang có Quest
         
-        -- 3. Find NPC (with attempt limit)
+        -- BƯỚC 3: TÌM NPC GIAO HÀNG
         local npc, root
-        for i = 1, 15 do
+        for i = 1, Config.MaxFindAttempts do
             if not getgenv().AutoFarmDelivery then break end
             
             npc, root = findDeliveryNPC()
-            if npc and root then break end
+            if npc and root then 
+                break 
+            end
             
-            task.wait(0.3)
+            task.wait(Config.FindNPCDelay) -- Quét liên tục 20 lần, mỗi lần cách nhau 0.5s
         end
         
-        -- 4. Complete Quest
+        -- BƯỚC 4: GIAO HÀNG (Nếu tìm thấy)
         if npc and root and getgenv().AutoFarmDelivery then
             teleportTo(root.CFrame * Config.DeliveryOffset)
-            task.wait(Config.WaitDelay)
+            task.wait(Config.TeleportDelay) -- Quan trọng: Chờ để Server nhận ra bạn đã đến gần NPC
+            
             completeDelivery(npc.Name)
+            task.wait(Config.ActionDelay) -- Chờ hoàn thành để tránh lặp ngay lập tức
+        else
+            -- Nếu lỗi (không tìm thấy NPC do nhận Quest xịt), delay 2s rồi làm lại từ đầu
+            task.wait(2)
         end
         
-        task.wait(Config.WaitDelay)
     end
 end)
