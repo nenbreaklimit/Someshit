@@ -1,6 +1,3 @@
---==================================================
--- AUTO FARM DELIVERY - FIXED & OPTIMIZED
---==================================================
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -8,29 +5,33 @@ local VirtualUser = game:GetService("VirtualUser")
 
 local player = Players.LocalPlayer
 
--- Cấu hình
-local Config = {
-    StartPos = CFrame.new(-152.8, -25, 668.1),
-    DeliveryOffset = CFrame.new(0, -10, 0),
-    QuestName = "Fujiwara Bunta",
-    WaitDelay = 0.4 -- Giảm thời gian chờ để farm nhanh hơn
-}
+--==================================================
+-- EXECUTOR TOGGLE (Run as 'false' to stop)
+--==================================================
+getgenv().AutoFarmDelivery = true
 
--- Thông báo kích hoạt thành công
+-- Send a notification so you know it injected
 pcall(function()
-    game:GetService("StarterGui"):SetCore("SendNotification", {
+    game.StarterGui:SetCore("SendNotification", {
         Title = "Auto Farm",
-        Text = "Farm Tofu Running!",
+        Text = "Script Executed Successfully!",
         Duration = 3
     })
 end)
 
+local Config = {
+    StartPos = CFrame.new(-152.8, -21, 668.1),
+    DeliveryOffset = CFrame.new(0, -10, 0),
+    QuestName = "Fujiwara Bunta",
+    WaitDelay = 0.3
+}
+
 --==================================================
--- ANTI-AFK
+-- EXECUTOR ANTI-AFK
 --==================================================
 pcall(function()
     for _, conn in pairs(getconnections(player.Idled)) do
-        if conn.Disable then conn:Disable() end
+        conn:Disable()
     end
 end)
 
@@ -42,61 +43,53 @@ end)
 --==================================================
 -- UTILITIES
 --==================================================
-local function getCharacterData()
+local function getRoot()
     local char = player.Character or player.CharacterAdded:Wait()
-    local root = char:WaitForChild("HumanoidRootPart", 5)
-    local hum = char:WaitForChild("Humanoid", 5)
-    return char, root, hum
+    local root = char:WaitForChild("HumanoidRootPart", 9e9)
+    return root
 end
 
 local function teleportTo(targetCFrame)
-    local _, root = getCharacterData()
-    if root then
-        root.CFrame = targetCFrame
-    end
-end
-
---==================================================
--- KHÔNG BAO GIỜ RỚT (HOVER LOCK)
---==================================================
-local bodyVel
-
-local function applyFloat()
-    local _, root, hum = getCharacterData()
-    if not root then return end
-
-    if hum then
-        hum.PlatformStand = true -- Triệt tiêu hiệu ứng trọng lực tác động lên nhân vật
-    end
-
-    if not root:FindFirstChild("FarmBodyVelocity") then
-        bodyVel = Instance.new("BodyVelocity")
-        bodyVel.Name = "FarmBodyVelocity"
-        bodyVel.MaxForce = Vector3.new(1e9, 1e9, 1e9)
-        bodyVel.Velocity = Vector3.zero
-        bodyVel.Parent = root
-    end
-end
-
-local floatConnection
-floatConnection = RunService.Heartbeat:Connect(function()
-    if not getgenv().AutoFarmDelivery then
-        if bodyVel then bodyVel:Destroy() end
-        local _, _, hum = getCharacterData()
-        if hum then hum.PlatformStand = false end
-        if floatConnection then floatConnection:Disconnect() end
-        return
-    end
-
     pcall(function()
-        applyFloat()
-        local _, root = getCharacterData()
+        local root = getRoot()
         if root then
-            root.AssemblyLinearVelocity = Vector3.zero
-            root.AssemblyAngularVelocity = Vector3.zero
+            -- Triệt tiêu lực quán tính khi dịch chuyển để không bị trôi
+            root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+            root.CFrame = targetCFrame
         end
     end)
-end)
+end
+
+--==================================================
+-- STABILIZATION (NO GRAVITY)
+--==================================================
+local originalGravity = workspace.Gravity
+local noGravityConnection
+
+local function enableNoGravity()
+    if workspace.Gravity ~= 0 then
+        originalGravity = workspace.Gravity
+    end
+    
+    workspace.Gravity = 0
+    
+    if noGravityConnection then noGravityConnection:Disconnect() end
+    
+    noGravityConnection = RunService.Heartbeat:Connect(function()
+        -- Khôi phục trọng lực khi người dùng tắt AutoFarm
+        if not getgenv().AutoFarmDelivery then 
+            workspace.Gravity = originalGravity
+            if noGravityConnection then noGravityConnection:Disconnect() end
+            return 
+        end
+        
+        -- Duy trì trạng thái không trọng lực
+        if workspace.Gravity ~= 0 then
+            workspace.Gravity = 0
+        end
+    end)
+end
 
 --==================================================
 -- CORE LOGIC
@@ -104,7 +97,7 @@ end)
 local function takeQuest()
     pcall(function()
         local args = { { [";"] = Config.QuestName }, {} }
-        ReplicatedStorage:WaitForChild("RedEvent", 3):FireServer(unpack(args))
+        ReplicatedStorage:WaitForChild("RedEvent", 5):FireServer(unpack(args))
     end)
 end
 
@@ -128,41 +121,49 @@ end
 local function completeDelivery(npcName)
     pcall(function()
         local args = { { ["<"] = npcName }, {} }
-        ReplicatedStorage:WaitForChild("RedEvent", 3):FireServer(unpack(args))
+        ReplicatedStorage:WaitForChild("RedEvent", 5):FireServer(unpack(args))
     end)
 end
 
 --==================================================
--- MAIN LOOP (TỰ ĐỘNG CHẠY NGAY KHI EXECUTE)
+-- MAIN LOOP
 --==================================================
 task.spawn(function()
+    enableNoGravity()
+    
     while getgenv().AutoFarmDelivery do
-        -- 1. Dịch chuyển về vị trí bắt đầu
+        
+        -- 1. Go To Start
         teleportTo(Config.StartPos)
         task.wait(Config.WaitDelay)
-
+        
         if not getgenv().AutoFarmDelivery then break end
-
-        -- 2. Nhận Nhiệm vụ
+        
+        -- 2. Take Quest
         takeQuest()
         task.wait(Config.WaitDelay)
-
-        -- 3. Quét tìm NPC giao hàng (tối đa 10 lần)
+        
+        -- 3. Find NPC (with attempt limit)
         local npc, root
-        for i = 1, 10 do
+        for i = 1, 15 do
             if not getgenv().AutoFarmDelivery then break end
+            
             npc, root = findDeliveryNPC()
             if npc and root then break end
-            task.wait(0.1)
+            
+            task.wait(0.3)
         end
-
-        -- 4. Dịch chuyển & Hoàn thành giao hàng
+        
+        -- 4. Complete Quest
         if npc and root and getgenv().AutoFarmDelivery then
             teleportTo(root.CFrame * Config.DeliveryOffset)
             task.wait(Config.WaitDelay)
             completeDelivery(npc.Name)
         end
-
+        
         task.wait(Config.WaitDelay)
     end
+    
+    -- Đảm bảo trả lại trọng lực nếu vòng lặp kết thúc
+    workspace.Gravity = originalGravity
 end)
