@@ -1,3 +1,4 @@
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -6,40 +7,37 @@ local VirtualUser = game:GetService("VirtualUser")
 local player = Players.LocalPlayer
 
 --==================================================
--- EXECUTOR TOGGLE
+-- EXECUTOR TOGGLE (Run as 'false' to stop)
 --==================================================
 getgenv().AutoFarmDelivery = true
 
+-- Send a notification so you know it injected
 pcall(function()
     game.StarterGui:SetCore("SendNotification", {
         Title = "Auto Farm",
-        Text = "Đã tối ưu chống hụt bước!",
+        Text = "Script Executed Successfully!",
         Duration = 3
     })
 end)
 
--- ĐÃ TỐI ƯU LẠI CONFIG CHỜ
 local Config = {
     StartPos = CFrame.new(-152.8, -21, 668.1),
     DeliveryOffset = CFrame.new(0, -10, 0),
     QuestName = "Fujiwara Bunta",
-    
-    -- Tách riêng các loại Delay để dễ tinh chỉnh theo mạng của bạn
-    TeleportDelay = 1,     -- Thời gian chờ sau khi dịch chuyển (Quan trọng để server nhận diện vị trí)
-    ActionDelay = 0.8,     -- Thời gian chờ sau khi bấm nhận/trả quest
-    FindNPCDelay = 0.5,    -- Thời gian chờ mỗi lần quét tìm NPC
-    MaxFindAttempts = 20   -- Số lần quét tìm NPC tối đa (20 x 0.5s = 10s)
+    WaitDelay = 0.3
 }
 
 --==================================================
 -- EXECUTOR ANTI-AFK
 --==================================================
 pcall(function()
+    -- Executor specific function to disable AFK kick
     for _, conn in pairs(getconnections(player.Idled)) do
         conn:Disable()
     end
 end)
 
+-- Fallback for executors that don't support getconnections
 player.Idled:Connect(function()
     VirtualUser:CaptureController()
     VirtualUser:ClickButton2(Vector2.new())
@@ -48,19 +46,9 @@ end)
 --==================================================
 -- UTILITIES
 --==================================================
-local function getCharacterData()
-    local char = player.Character
-    if not char then return nil, nil, nil end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    return char, root, hum
-end
-
 local function getRoot()
-    local _, root = getCharacterData()
-    if not root and player.Character then
-        root = player.Character:WaitForChild("HumanoidRootPart", 5)
-    end
+    local char = player.Character or player.CharacterAdded:Wait()
+    local root = char:WaitForChild("HumanoidRootPart", 9e9)
     return root
 end
 
@@ -68,55 +56,38 @@ local function teleportTo(targetCFrame)
     pcall(function()
         local root = getRoot()
         if root then
-            -- Tắt velocity trước khi dịch chuyển để tránh bị văng
-            root.AssemblyLinearVelocity = Vector3.zero
-            root.AssemblyAngularVelocity = Vector3.zero
             root.CFrame = targetCFrame
         end
     end)
 end
 
 --==================================================
--- KHÔNG BAO GIỜ RỚT (HOVER LOCK)
+-- STABILIZATION (FLYING)
 --==================================================
-local bodyVel
+local flying = false
+local flyConnection
 
-local function applyFloat()
-    local _, root, hum = getCharacterData()
-    if not root then return end
-
-    if hum then
-        hum.PlatformStand = true
-    end
-
-    if not root:FindFirstChild("FarmBodyVelocity") then
-        bodyVel = Instance.new("BodyVelocity")
-        bodyVel.Name = "FarmBodyVelocity"
-        bodyVel.MaxForce = Vector3.new(1e9, 1e9, 1e9)
-        bodyVel.Velocity = Vector3.zero
-        bodyVel.Parent = root
-    end
-end
-
-local floatConnection
-floatConnection = RunService.Heartbeat:Connect(function()
-    if not getgenv().AutoFarmDelivery then
-        if bodyVel then bodyVel:Destroy() end
-        local _, _, hum = getCharacterData()
-        if hum then hum.PlatformStand = false end
-        if floatConnection then floatConnection:Disconnect() end
-        return
-    end
-
-    pcall(function()
-        applyFloat()
-        local _, root = getCharacterData()
-        if root then
-            root.AssemblyLinearVelocity = Vector3.zero
-            root.AssemblyAngularVelocity = Vector3.zero
+local function startFly()
+    if flying then return end
+    flying = true
+    
+    flyConnection = RunService.Heartbeat:Connect(function()
+        -- Break connection if user toggles off
+        if not getgenv().AutoFarmDelivery then 
+            flying = false
+            if flyConnection then flyConnection:Disconnect() end
+            return 
         end
+        
+        pcall(function()
+            local root = getRoot()
+            if root then
+                root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+            end
+        end)
     end)
-end)
+end
 
 --==================================================
 -- CORE LOGIC
@@ -153,45 +124,41 @@ local function completeDelivery(npcName)
 end
 
 --==================================================
--- MAIN LOOP (ĐÃ FIX LẠI LOGIC CHỐNG HỤT)
+-- MAIN LOOP
 --==================================================
 task.spawn(function()
+    startFly()
+    
     while getgenv().AutoFarmDelivery do
         
-        -- BƯỚC 1: ĐI TỚI CHỖ NHẬN QUEST
+        -- 1. Go To Start
         teleportTo(Config.StartPos)
-        task.wait(Config.TeleportDelay) -- Chờ 1 giây để Server load xong vị trí của bạn
+        task.wait(Config.WaitDelay)
         
         if not getgenv().AutoFarmDelivery then break end
         
-        -- BƯỚC 2: GỬI LỆNH NHẬN QUEST
+        -- 2. Take Quest
         takeQuest()
-        task.wait(Config.ActionDelay) -- Chờ 0.8 giây để Server kịp đánh dấu bạn đang có Quest
+        task.wait(Config.WaitDelay)
         
-        -- BƯỚC 3: TÌM NPC GIAO HÀNG
+        -- 3. Find NPC (with attempt limit)
         local npc, root
-        for i = 1, Config.MaxFindAttempts do
+        for i = 1, 15 do
             if not getgenv().AutoFarmDelivery then break end
             
             npc, root = findDeliveryNPC()
-            if npc and root then 
-                break 
-            end
+            if npc and root then break end
             
-            task.wait(Config.FindNPCDelay) -- Quét liên tục 20 lần, mỗi lần cách nhau 0.5s
+            task.wait(0.3)
         end
         
-        -- BƯỚC 4: GIAO HÀNG (Nếu tìm thấy)
+        -- 4. Complete Quest
         if npc and root and getgenv().AutoFarmDelivery then
             teleportTo(root.CFrame * Config.DeliveryOffset)
-            task.wait(Config.TeleportDelay) -- Quan trọng: Chờ để Server nhận ra bạn đã đến gần NPC
-            
+            task.wait(Config.WaitDelay)
             completeDelivery(npc.Name)
-            task.wait(Config.ActionDelay) -- Chờ hoàn thành để tránh lặp ngay lập tức
-        else
-            -- Nếu lỗi (không tìm thấy NPC do nhận Quest xịt), delay 2s rồi làm lại từ đầu
-            task.wait(2)
         end
         
+        task.wait(Config.WaitDelay)
     end
 end)
