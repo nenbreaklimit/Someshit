@@ -136,7 +136,9 @@ end
 -- MAIN LOOP (TỰ ĐỘNG CHẠY NGAY KHI EXECUTE)
 --==================================================
 task.spawn(function()
-    while getgenv().AutoFarmDelivery do
+    startFly()
+    
+    while getgenv().AutoFarmDelivery do
         
         -- 1. Go To Start
         teleportTo(Config.StartPos)
