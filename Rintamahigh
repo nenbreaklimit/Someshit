@@ -1,4 +1,4 @@
-Local Players = game:GetService("Players")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local VirtualUser = game:GetService("VirtualUser")
@@ -6,58 +6,66 @@ local VirtualUser = game:GetService("VirtualUser")
 local player = Players.LocalPlayer
 
 --==================================================
--- EXECUTOR TOGGLE (Run as 'false' to stop)
+-- EXECUTOR TOGGLE (Chỉnh 'false' để dừng script)
 --==================================================
 getgenv().AutoFarmDelivery = true
 
--- Send a notification so you know it injected
+-- Thông báo khi script chạy
 pcall(function()
-    game.StarterGui:SetCore("SendNotification", {
-        Title = "Auto Farm",
-        Text = "Script Executed Successfully!",
-        Duration = 3
-    })
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "Auto Farm",
+        Text = "Script Executed Successfully!",
+        Duration = 3
+    })
 end)
 
 local Config = {
-    StartPos = CFrame.new(-152.8, -21, 668.1),
-    DeliveryOffset = CFrame.new(0, -10, 0),
-    QuestName = "Fujiwara Bunta",
-    WaitDelay = 0.3
+    StartPos = CFrame.new(-152.8, -21, 668.1),
+    DeliveryOffset = CFrame.new(0, -10, 0),
+    QuestName = "Fujiwara Bunta",
+    WaitDelay = 0.3
 }
 
 --==================================================
 -- EXECUTOR ANTI-AFK
 --==================================================
 pcall(function()
-    -- Executor specific function to disable AFK kick
-    for _, conn in pairs(getconnections(player.Idled)) do
-        conn:Disable()
-    end
+    for _, conn in pairs(getconnections(player.Idled)) do
+        conn:Disable()
+    end
 end)
 
--- Fallback for executors that don't support getconnections
 player.Idled:Connect(function()
-    VirtualUser:CaptureController()
-    VirtualUser:ClickButton2(Vector2.new())
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
 end)
 
 --==================================================
 -- UTILITIES
 --==================================================
+local function getCharacterData()
+    local char = player.Character
+    if not char then return nil, nil, nil end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    return char, root, hum
+end
+
 local function getRoot()
-    local char = player.Character or player.CharacterAdded:Wait()
-    local root = char:WaitForChild("HumanoidRootPart", 9e9)
-    return root
+    local _, root = getCharacterData()
+    if not root and player.Character then
+        root = player.Character:WaitForChild("HumanoidRootPart", 5)
+    end
+    return root
 end
 
 local function teleportTo(targetCFrame)
-    pcall(function()
-        local root = getRoot()
-        if root then
-            root.CFrame = targetCFrame
-        end
-    end)
+    pcall(function()
+        local root = getRoot()
+        if root then
+            root.CFrame = targetCFrame
+        end
+    end)
 end
 
 --==================================================
@@ -102,77 +110,74 @@ floatConnection = RunService.Heartbeat:Connect(function()
     end)
 end)
 
---
 --==================================================
 -- CORE LOGIC
 --==================================================
 local function takeQuest()
-    pcall(function()
-        local args = { { [";"] = Config.QuestName }, {} }
-        ReplicatedStorage:WaitForChild("RedEvent", 5):FireServer(unpack(args))
-    end)
+    pcall(function()
+        local args = { { [";"] = Config.QuestName }, {} }
+        ReplicatedStorage:WaitForChild("RedEvent", 5):FireServer(unpack(args))
+    end)
 end
 
 local function findDeliveryNPC()
-    local foundNpc, foundRoot = nil, nil
-    pcall(function()
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj:IsA("Model") and obj:FindFirstChild("DeliveryPulse", true) then
-                local root = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
-                if root then
-                    foundNpc = obj
-                    foundRoot = root
-                    break
-                end
-            end
-        end
-    end)
-    return foundNpc, foundRoot
+    local foundNpc, foundRoot = nil, nil
+    pcall(function()
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("Model") and obj:FindFirstChild("DeliveryPulse", true) then
+                local root = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
+                if root then
+                    foundNpc = obj
+                    foundRoot = root
+                    break
+                end
+            end
+        end
+    end)
+    return foundNpc, foundRoot
 end
 
 local function completeDelivery(npcName)
-    pcall(function()
-        local args = { { ["<"] = npcName }, {} }
-        ReplicatedStorage:WaitForChild("RedEvent", 5):FireServer(unpack(args))
-    end)
+    pcall(function()
+        local args = { { ["<"] = npcName }, {} }
+        ReplicatedStorage:WaitForChild("RedEvent", 5):FireServer(unpack(args))
+    end)
 end
 
 --==================================================
 -- MAIN LOOP
 --==================================================
 task.spawn(function()
-    startFly()
-    
-    while getgenv().AutoFarmDelivery do
-        
-        -- 1. Go To Start
-        teleportTo(Config.StartPos)
-        task.wait(Config.WaitDelay)
-        
-        if not getgenv().AutoFarmDelivery then break end
-        
-        -- 2. Take Quest
-        takeQuest()
-        task.wait(Config.WaitDelay)
-        
-        -- 3. Find NPC (with attempt limit)
-        local npc, root
-        for i = 1, 15 do
-            if not getgenv().AutoFarmDelivery then break end
-            
-            npc, root = findDeliveryNPC()
-            if npc and root then break end
-            
-            task.wait(0.3)
-        end
-        
-        -- 4. Complete Quest
-        if npc and root and getgenv().AutoFarmDelivery then
-            teleportTo(root.CFrame * Config.DeliveryOffset)
-            task.wait(Config.WaitDelay)
-            completeDelivery(npc.Name)
-        end
-        
-        task.wait(Config.WaitDelay)
-    end
+    while getgenv().AutoFarmDelivery do
+        
+        -- 1. Go To Start
+        teleportTo(Config.StartPos)
+        task.wait(Config.WaitDelay)
+        
+        if not getgenv().AutoFarmDelivery then break end
+        
+        -- 2. Take Quest
+        takeQuest()
+        task.wait(Config.WaitDelay)
+        
+        -- 3. Find NPC (with attempt limit)
+        local npc, root
+        for i = 1, 15 do
+            if not getgenv().AutoFarmDelivery then break end
+            
+            npc, root = findDeliveryNPC()
+            if npc and root then break end
+            
+            task.wait(0.3)
+        end
+        
+        -- 4. Complete Quest
+        if npc and root and getgenv().AutoFarmDelivery then
+            teleportTo(root.CFrame * Config.DeliveryOffset)
+            task.wait(Config.WaitDelay)
+            completeDelivery(npc.Name)
+        end
+        
+        task.wait(Config.WaitDelay)
+    end
 end)
