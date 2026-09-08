@@ -136,38 +136,33 @@ end
 -- MAIN LOOP (TỰ ĐỘNG CHẠY NGAY KHI EXECUTE)
 --==================================================
 task.spawn(function()
-    startFly()
-    
-    while getgenv().AutoFarmDelivery do
-        
-        -- 1. Go To Start
-        teleportTo(Config.StartPos)
-        task.wait(Config.WaitDelay)
-        
-        if not getgenv().AutoFarmDelivery then break end
-        
-        -- 2. Take Quest
-        takeQuest()
-        task.wait(Config.WaitDelay)
-        
-        -- 3. Find NPC (with attempt limit)
-        local npc, root
-        for i = 1, 15 do
-            if not getgenv().AutoFarmDelivery then break end
-            
-            npc, root = findDeliveryNPC()
-            if npc and root then break end
-            
-            task.wait(0.3)
-        end
-        
-        -- 4. Complete Quest
-        if npc and root and getgenv().AutoFarmDelivery then
-            teleportTo(root.CFrame * Config.DeliveryOffset)
-            task.wait(Config.WaitDelay)
-            completeDelivery(npc.Name)
-        end
-        
-        task.wait(Config.WaitDelay)
-    end
+    while getgenv().AutoFarmDelivery do
+        -- 1. Dịch chuyển về vị trí bắt đầu
+        teleportTo(Config.StartPos)
+        task.wait(Config.WaitDelay)
+
+        if not getgenv().AutoFarmDelivery then break end
+
+        -- 2. Nhận Nhiệm vụ
+        takeQuest()
+        task.wait(Config.WaitDelay)
+
+        -- 3. Quét tìm NPC giao hàng (tối đa 10 lần)
+        local npc, root
+        for i = 1, 10 do
+            if not getgenv().AutoFarmDelivery then break end
+            npc, root = findDeliveryNPC()
+            if npc and root then break end
+            task.wait(0.1)
+        end
+
+        -- 4. Dịch chuyển & Hoàn thành giao hàng
+        if npc and root and getgenv().AutoFarmDelivery then
+            teleportTo(root.CFrame * Config.DeliveryOffset)
+            task.wait(Config.WaitDelay)
+            completeDelivery(npc.Name)
+        end
+
+        task.wait(Config.WaitDelay)
+    end
 end)
